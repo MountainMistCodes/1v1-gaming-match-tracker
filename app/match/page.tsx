@@ -9,6 +9,7 @@ import { BottomNav, PageHeader } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ImageUpload } from "@/components/image-upload"
 import { cn } from "@/lib/utils"
 import { Swords, Trophy, Loader2, Check, UserPlus } from "lucide-react"
 import type { Player } from "@/lib/types"
@@ -18,6 +19,7 @@ import {
   checkAndGenerateRivalryActivity,
   checkAndGenerateMilestoneActivity,
 } from "@/lib/activity-generator"
+import { uploadImageToSupabase } from "@/lib/image-utils"
 
 export default function RecordMatchPage() {
   const router = useRouter()
@@ -26,6 +28,7 @@ export default function RecordMatchPage() {
   const [player2Id, setPlayer2Id] = useState<string>("")
   const [winnerId, setWinnerId] = useState<string>("")
   const [notes, setNotes] = useState("")
+  const [imageBase64, setImageBase64] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -51,6 +54,11 @@ export default function RecordMatchPage() {
     setIsSubmitting(true)
     const supabase = createClient()
 
+    let imageUrl: string | null = null
+    if (imageBase64) {
+      imageUrl = await uploadImageToSupabase(supabase, imageBase64, "matches")
+    }
+
     const { data: match, error } = await supabase
       .from("matches")
       .insert({
@@ -58,6 +66,7 @@ export default function RecordMatchPage() {
         player2_id: player2Id,
         winner_id: winnerId,
         notes: notes.trim() || null,
+        image_url: imageUrl, // Save image URL
       })
       .select()
       .single()
@@ -67,16 +76,10 @@ export default function RecordMatchPage() {
       const loserId = winnerId === player1Id ? player2Id : player1Id
       const loser = players.find((p) => p.id === loserId)!
 
-      // Generate match result activity
-      await generateMatchActivity(match.id, winner, loser)
+      await generateMatchActivity(match.id, winner, loser, imageUrl)
 
-      // Check for streak activity
       await checkAndGenerateStreakActivity(winnerId)
-
-      // Check for rivalry milestone
       await checkAndGenerateRivalryActivity(player1Id, player2Id)
-
-      // Check for overall milestones
       await checkAndGenerateMilestoneActivity()
 
       setShowSuccess(true)
@@ -85,6 +88,7 @@ export default function RecordMatchPage() {
         setPlayer2Id("")
         setWinnerId("")
         setNotes("")
+        setImageBase64(null) // Reset image
         setShowSuccess(false)
       }, 1500)
     }
@@ -96,6 +100,7 @@ export default function RecordMatchPage() {
     setPlayer2Id("")
     setWinnerId("")
     setNotes("")
+    setImageBase64(null) // Reset image
   }
 
   if (isLoading) {
@@ -238,17 +243,21 @@ export default function RecordMatchPage() {
             </div>
           )}
 
-          {/* Notes */}
+          {/* Notes & Image */}
           {winnerId && (
-            <div>
-              <label className="text-sm text-muted-foreground mb-2 block">یادداشت (اختیاری)</label>
-              <Input
-                placeholder="مثلا: بازی نزدیک، برگشت عالی..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="bg-secondary border-0 h-12 rounded-xl"
-              />
-            </div>
+            <>
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">یادداشت (اختیاری)</label>
+                <Input
+                  placeholder="مثلا: بازی نزدیک، برگشت عالی..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="bg-secondary border-0 h-12 rounded-xl"
+                />
+              </div>
+
+              <ImageUpload value={imageBase64} onChange={setImageBase64} />
+            </>
           )}
 
           {/* Actions */}

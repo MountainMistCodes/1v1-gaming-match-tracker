@@ -90,6 +90,7 @@ export interface Activity {
     placements?: { position: number; player_name: string }[]
     milestone_count?: number
     milestone_type?: string
+    image_url?: string
   }
   related_player_id: string | null
   related_match_id: string | null

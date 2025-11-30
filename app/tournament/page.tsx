@@ -10,10 +10,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ShamsiDatePicker } from "@/components/shamsi-date-picker"
+import { ImageUpload } from "@/components/image-upload"
 import { cn } from "@/lib/utils"
 import { Trophy, Plus, X, Loader2, Check, UserPlus, Medal, Award } from "lucide-react"
 import type { Player } from "@/lib/types"
 import { generateTournamentActivity, checkAndGenerateMilestoneActivity } from "@/lib/activity-generator"
+import { uploadImageToSupabase } from "@/lib/image-utils"
 
 interface Placement {
   position: number
@@ -26,13 +28,14 @@ export default function TournamentPage() {
   const router = useRouter()
   const [players, setPlayers] = useState<Player[]>([])
   const [name, setName] = useState("")
-  const [gameType, setGameType] = useState("PES") // Default game type to PES
+  const [gameType, setGameType] = useState("PES")
   const [date, setDate] = useState(new Date().toISOString().split("T")[0])
   const [placements, setPlacements] = useState<Placement[]>([
     { position: 1, playerId: "" },
     { position: 2, playerId: "" },
     { position: 3, playerId: "" },
   ])
+  const [imageBase64, setImageBase64] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -71,6 +74,11 @@ export default function TournamentPage() {
     setIsSubmitting(true)
     const supabase = createClient()
 
+    let imageUrl: string | null = null
+    if (imageBase64) {
+      imageUrl = await uploadImageToSupabase(supabase, imageBase64, "tournaments")
+    }
+
     // Create tournament
     const { data: tournament, error: tournamentError } = await supabase
       .from("tournaments")
@@ -78,6 +86,7 @@ export default function TournamentPage() {
         name: name.trim(),
         game_type: gameType || null,
         tournament_date: date,
+        image_url: imageUrl, // Save image URL
       })
       .select()
       .single()
@@ -103,21 +112,20 @@ export default function TournamentPage() {
         player: players.find((pl) => pl.id === p.playerId)!,
       }))
 
-      await generateTournamentActivity(tournament.id, name.trim(), placementsWithPlayers)
-
-      // Check for overall milestones
+      await generateTournamentActivity(tournament.id, name.trim(), placementsWithPlayers, imageUrl)
       await checkAndGenerateMilestoneActivity()
 
       setShowSuccess(true)
       setTimeout(() => {
         setName("")
-        setGameType("PES") // Reset game type to PES
+        setGameType("PES")
         setDate(new Date().toISOString().split("T")[0])
         setPlacements([
           { position: 1, playerId: "" },
           { position: 2, playerId: "" },
           { position: 3, playerId: "" },
         ])
+        setImageBase64(null) // Reset image
         setShowSuccess(false)
       }, 1500)
     }
@@ -201,6 +209,8 @@ export default function TournamentPage() {
                 <ShamsiDatePicker value={date} onChange={setDate} />
               </div>
             </div>
+
+            <ImageUpload value={imageBase64} onChange={setImageBase64} />
           </div>
 
           {/* Placements */}

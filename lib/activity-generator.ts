@@ -37,7 +37,7 @@ export async function createActivity(params: CreateActivityParams) {
 }
 
 // Generate match result activity
-export async function generateMatchActivity(matchId: string, winner: Player, loser: Player) {
+export async function generateMatchActivity(matchId: string, winner: Player, loser: Player, imageUrl?: string | null) {
   await createActivity({
     type: "match_result",
     title: `${winner.name} پیروز شد!`,
@@ -49,6 +49,7 @@ export async function generateMatchActivity(matchId: string, winner: Player, los
       winner_name: winner.name,
       loser_id: loser.id,
       loser_name: loser.name,
+      image_url: imageUrl || undefined, // Include image URL in metadata
     },
     related_match_id: matchId,
     related_player_id: winner.id,
@@ -60,6 +61,7 @@ export async function generateTournamentActivity(
   tournamentId: string,
   tournamentName: string,
   placements: { position: number; player: Player }[],
+  imageUrl?: string | null,
 ) {
   const winner = placements.find((p) => p.position === 1)
 
@@ -75,6 +77,7 @@ export async function generateTournamentActivity(
         position: p.position,
         player_name: p.player.name,
       })),
+      image_url: imageUrl || undefined, // Include image URL in metadata
     },
     related_tournament_id: tournamentId,
     related_player_id: winner?.player.id,
