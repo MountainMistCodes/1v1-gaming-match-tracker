@@ -56,7 +56,7 @@ export default function RecordMatchPage() {
 
     let imageUrl: string | null = null
     if (imageBase64) {
-      imageUrl = await uploadImageToSupabase(supabase, imageBase64, "matches")
+      imageUrl = await uploadImageToSupabase(imageBase64, "matches")
     }
 
     const { data: match, error } = await supabase

@@ -16,13 +16,13 @@ export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
   const [isCompressing, setIsCompressing] = useState(false)
   const [originalSize, setOriginalSize] = useState<number | null>(null)
   const [compressedSize, setCompressedSize] = useState<number | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Only accept images
     if (!file.type.startsWith("image/")) {
       return
     }
@@ -32,7 +32,6 @@ export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
 
     try {
       const compressed = await compressImage(file, 800, 0.7)
-      // Calculate compressed size (base64 is ~33% larger than binary)
       const compressedBinarySize = Math.round((compressed.length * 3) / 4)
       setCompressedSize(compressedBinarySize)
       onChange(compressed)
@@ -47,9 +46,8 @@ export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
     onChange(null)
     setOriginalSize(null)
     setCompressedSize(null)
-    if (inputRef.current) {
-      inputRef.current.value = ""
-    }
+    if (cameraInputRef.current) cameraInputRef.current.value = ""
+    if (galleryInputRef.current) galleryInputRef.current.value = ""
   }
 
   return (
@@ -76,43 +74,65 @@ export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
           )}
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={isCompressing}
-          className={cn(
-            "w-full h-24 rounded-xl border-2 border-dashed border-border",
-            "flex flex-col items-center justify-center gap-2",
-            "bg-secondary/50 hover:bg-secondary transition-colors",
-            "text-muted-foreground hover:text-foreground",
-            isCompressing && "opacity-50 cursor-not-allowed",
-          )}
-        >
-          {isCompressing ? (
-            <>
-              <Loader2 className="h-6 w-6 animate-spin" />
-              <span className="text-sm">در حال فشرده‌سازی...</span>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-2">
-                <Camera className="h-5 w-5" />
-                <ImageIcon className="h-5 w-5" />
-              </div>
-              <span className="text-sm">افزودن عکس</span>
-            </>
-          )}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => cameraInputRef.current?.click()}
+            disabled={isCompressing}
+            className={cn(
+              "flex-1 h-20 rounded-xl border-2 border-dashed border-border",
+              "flex flex-col items-center justify-center gap-1",
+              "bg-secondary/50 hover:bg-secondary transition-colors",
+              "text-muted-foreground hover:text-foreground",
+              isCompressing && "opacity-50 cursor-not-allowed",
+            )}
+          >
+            {isCompressing ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <>
+                <Camera className="h-6 w-6" />
+                <span className="text-xs">دوربین</span>
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => galleryInputRef.current?.click()}
+            disabled={isCompressing}
+            className={cn(
+              "flex-1 h-20 rounded-xl border-2 border-dashed border-border",
+              "flex flex-col items-center justify-center gap-1",
+              "bg-secondary/50 hover:bg-secondary transition-colors",
+              "text-muted-foreground hover:text-foreground",
+              isCompressing && "opacity-50 cursor-not-allowed",
+            )}
+          >
+            {isCompressing ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <>
+                <ImageIcon className="h-6 w-6" />
+                <span className="text-xs">گالری</span>
+              </>
+            )}
+          </button>
+        </div>
       )}
 
+      {/* Camera input - captures from camera directly */}
       <input
-        ref={inputRef}
+        ref={cameraInputRef}
         type="file"
         accept="image/*"
         capture="environment"
         onChange={handleFileChange}
         className="hidden"
       />
+
+      {/* Gallery input - opens photo gallery */}
+      <input ref={galleryInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
     </div>
   )
 }

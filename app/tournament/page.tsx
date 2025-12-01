@@ -76,7 +76,7 @@ export default function TournamentPage() {
 
     let imageUrl: string | null = null
     if (imageBase64) {
-      imageUrl = await uploadImageToSupabase(supabase, imageBase64, "tournaments")
+      imageUrl = await uploadImageToSupabase(imageBase64, "tournaments")
     }
 
     // Create tournament

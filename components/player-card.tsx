@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { Trophy, ChevronLeft } from "lucide-react"
+import { Trophy, ChevronLeft, User } from "lucide-react"
 import type { PlayerStats } from "@/lib/types"
 
 interface PlayerCardProps {
@@ -32,6 +32,19 @@ export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
               {rank}
             </div>
           )}
+
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary border border-border flex items-center justify-center flex-shrink-0">
+            {player.avatar_url ? (
+              <img
+                src={player.avatar_url || "/placeholder.svg"}
+                alt={player.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <User className="h-5 w-5 text-muted-foreground" />
+            )}
+          </div>
+
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-foreground">{player.name}</h3>

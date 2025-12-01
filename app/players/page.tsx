@@ -11,11 +11,14 @@ import { Input } from "@/components/ui/input"
 import { Plus, UserPlus, Loader2 } from "lucide-react"
 import type { Player, PlayerStats } from "@/lib/types"
 import { generateNewPlayerActivity } from "@/lib/activity-generator"
+import { AvatarUpload } from "@/components/avatar-upload"
+import { uploadImageToSupabase } from "@/lib/image-utils"
 
 export default function PlayersPage() {
   const [players, setPlayers] = useState<Player[]>([])
   const [playerStats, setPlayerStats] = useState<PlayerStats[]>([])
   const [newPlayerName, setNewPlayerName] = useState("")
+  const [newPlayerAvatar, setNewPlayerAvatar] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isAdding, setIsAdding] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -67,9 +70,21 @@ export default function PlayersPage() {
     setIsAdding(true)
     const supabase = createClient()
 
+    let avatarUrl: string | null = null
+    if (newPlayerAvatar) {
+      try {
+        avatarUrl = await uploadImageToSupabase(newPlayerAvatar, "avatars")
+      } catch (err) {
+        console.error("Failed to upload avatar:", err)
+      }
+    }
+
     const { data: newPlayer, error } = await supabase
       .from("players")
-      .insert({ name: newPlayerName.trim() })
+      .insert({
+        name: newPlayerName.trim(),
+        avatar_url: avatarUrl,
+      })
       .select()
       .single()
 
@@ -77,6 +92,7 @@ export default function PlayersPage() {
       await generateNewPlayerActivity(newPlayer as Player)
 
       setNewPlayerName("")
+      setNewPlayerAvatar(null)
       setShowAddForm(false)
       await loadPlayers()
     }
@@ -91,10 +107,15 @@ export default function PlayersPage() {
         {/* Add Player Section */}
         {showAddForm ? (
           <form onSubmit={addPlayer} className="bg-card border border-border rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-4">
               <UserPlus className="h-5 w-5 text-primary" />
               <span className="font-medium text-foreground">افزودن بازیکن جدید</span>
             </div>
+
+            <div className="mb-4">
+              <AvatarUpload value={newPlayerAvatar} onChange={setNewPlayerAvatar} size="md" />
+            </div>
+
             <div className="flex gap-2">
               <Input
                 placeholder="نام بازیکن..."
@@ -111,7 +132,11 @@ export default function PlayersPage() {
               type="button"
               variant="ghost"
               className="w-full mt-2 text-muted-foreground"
-              onClick={() => setShowAddForm(false)}
+              onClick={() => {
+                setShowAddForm(false)
+                setNewPlayerAvatar(null)
+                setNewPlayerName("")
+              }}
             >
               انصراف
             </Button>
