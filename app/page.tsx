@@ -79,6 +79,23 @@ async function getDashboardData() {
   }
 }
 
+const MIN_GAMES_FOR_RANKING = 10
+
+function calculateRankingScore(stats: PlayerStats): number {
+  const { totalMatches, winPercentage, tournamentWins } = stats
+
+  let score = winPercentage
+
+  if (totalMatches < MIN_GAMES_FOR_RANKING) {
+    const confidenceFactor = totalMatches / MIN_GAMES_FOR_RANKING
+    score = 50 + (score - 50) * confidenceFactor
+  }
+
+  score += tournamentWins * 2
+
+  return score
+}
+
 function calculatePlayerStats(
   players: Player[],
   matches: any[],
@@ -108,8 +125,10 @@ export default async function HomePage() {
 
   const playerStats = calculatePlayerStats(players, allMatches, placements)
   const topPlayers = [...playerStats]
-    .sort((a, b) => b.totalWins - a.totalWins || b.winPercentage - a.winPercentage)
+    .map((stats) => ({ stats, rankingScore: calculateRankingScore(stats) }))
+    .sort((a, b) => b.rankingScore - a.rankingScore)
     .slice(0, 3)
+    .map((s) => s.stats)
 
   const totalMatches = allMatches.length
 

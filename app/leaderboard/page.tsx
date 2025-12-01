@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { BottomNav, PageHeader } from "@/components/navigation"
 import { PlayerCard } from "@/components/player-card"
-import { Medal } from "lucide-react"
+import { Medal, Info } from "lucide-react"
 import type { Player, PlayerStats } from "@/lib/types"
 
 async function fetchAllRows(supabase: any, table: string, selectQuery = "*") {
@@ -46,12 +46,37 @@ async function getLeaderboardData() {
   }
 }
 
+const MIN_GAMES_FOR_RANKING = 10 // Minimum games to be ranked fairly
+
+function calculateRankingScore(stats: PlayerStats): number {
+  const { totalMatches, winPercentage, tournamentWins } = stats
+
+  // Base score from win percentage (0-100)
+  let score = winPercentage
+
+  // Apply confidence factor based on games played
+  // Players with fewer games get their score reduced
+  // This prevents someone with 1 win / 1 game (100%) from ranking above
+  // someone with 80 wins / 100 games (80%)
+  if (totalMatches < MIN_GAMES_FOR_RANKING) {
+    // Gradually increase confidence as games approach minimum
+    const confidenceFactor = totalMatches / MIN_GAMES_FOR_RANKING
+    // Blend towards 50% (average) for low game counts
+    score = 50 + (score - 50) * confidenceFactor
+  }
+
+  // Tournament bonus: each tournament win adds 2 points
+  score += tournamentWins * 2
+
+  return score
+}
+
 function calculateStats(
   players: Player[],
   matches: { player1_id: string; player2_id: string; winner_id: string }[],
   placements: { player_id: string; placement: number }[],
 ): PlayerStats[] {
-  return players
+  const statsWithScore = players
     .map((player) => {
       const playerMatches = matches.filter((m) => m.player1_id === player.id || m.player2_id === player.id)
       const wins = matches.filter((m) => m.winner_id === player.id).length
@@ -59,7 +84,7 @@ function calculateStats(
       const tournamentWins = placements.filter((p) => p.player_id === player.id && p.placement === 1).length
       const tournamentParticipations = placements.filter((p) => p.player_id === player.id).length
 
-      return {
+      const stats: PlayerStats = {
         player,
         totalWins: wins,
         totalLosses: losses,
@@ -68,15 +93,15 @@ function calculateStats(
         tournamentWins,
         tournamentParticipations,
       }
+
+      return {
+        stats,
+        rankingScore: calculateRankingScore(stats),
+      }
     })
-    .sort((a, b) => {
-      // Sort by wins first
-      if (b.totalWins !== a.totalWins) return b.totalWins - a.totalWins
-      // Then by win percentage
-      if (b.winPercentage !== a.winPercentage) return b.winPercentage - a.winPercentage
-      // Then by total matches
-      return b.totalMatches - a.totalMatches
-    })
+    .sort((a, b) => b.rankingScore - a.rankingScore)
+
+  return statsWithScore.map((s) => s.stats)
 }
 
 export default async function LeaderboardPage() {
@@ -88,6 +113,14 @@ export default async function LeaderboardPage() {
       <PageHeader title="جدول امتیازات" subtitle="رتبه‌بندی کلی بازیکنان" />
 
       <div className="px-4 py-4">
+        <div className="bg-card/50 border border-border rounded-xl p-3 mb-4 flex items-start gap-2">
+          <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            رتبه‌بندی بر اساس درصد برد، با در نظر گرفتن حداقل {MIN_GAMES_FOR_RANKING} بازی برای رتبه‌بندی عادلانه و امتیاز
+            اضافی برای قهرمانی تورنمنت
+          </p>
+        </div>
+
         {rankings.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Medal className="h-12 w-12 mx-auto mb-3 opacity-50" />

@@ -14,6 +14,32 @@ import { generateNewPlayerActivity } from "@/lib/activity-generator"
 import { AvatarUpload } from "@/components/avatar-upload"
 import { uploadImageToSupabase } from "@/lib/image-utils"
 
+async function fetchAllRows(supabase: any, table: string, selectQuery = "*") {
+  const allData: any[] = []
+  const pageSize = 1000
+  let from = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(selectQuery)
+      .range(from, from + pageSize - 1)
+
+    if (error || !data || data.length === 0) {
+      hasMore = false
+    } else {
+      allData.push(...data)
+      from += pageSize
+      if (data.length < pageSize) {
+        hasMore = false
+      }
+    }
+  }
+
+  return allData
+}
+
 export default function PlayersPage() {
   const [players, setPlayers] = useState<Player[]>([])
   const [playerStats, setPlayerStats] = useState<PlayerStats[]>([])
@@ -30,22 +56,20 @@ export default function PlayersPage() {
   async function loadPlayers() {
     const supabase = createClient()
 
-    const [playersRes, matchesRes, placementsRes] = await Promise.all([
+    const [playersRes, matches, placements] = await Promise.all([
       supabase.from("players").select("*").order("name"),
-      supabase.from("matches").select("*"),
-      supabase.from("tournament_placements").select("*"),
+      fetchAllRows(supabase, "matches"),
+      fetchAllRows(supabase, "tournament_placements"),
     ])
 
     const players = (playersRes.data || []) as Player[]
-    const matches = matchesRes.data || []
-    const placements = placementsRes.data || []
 
     const stats = players.map((player) => {
-      const playerMatches = matches.filter((m) => m.player1_id === player.id || m.player2_id === player.id)
-      const wins = matches.filter((m) => m.winner_id === player.id).length
+      const playerMatches = matches.filter((m: any) => m.player1_id === player.id || m.player2_id === player.id)
+      const wins = matches.filter((m: any) => m.winner_id === player.id).length
       const losses = playerMatches.length - wins
-      const tournamentWins = placements.filter((p) => p.player_id === player.id && p.placement === 1).length
-      const tournamentParticipations = placements.filter((p) => p.player_id === player.id).length
+      const tournamentWins = placements.filter((p: any) => p.player_id === player.id && p.placement === 1).length
+      const tournamentParticipations = placements.filter((p: any) => p.player_id === player.id).length
 
       return {
         player,
