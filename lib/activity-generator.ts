@@ -43,20 +43,22 @@ export async function generateMatchActivity(
   loser: Player,
   imageUrl?: string | null,
   note?: string | null,
+  matchCount = 1,
 ) {
   await createActivity({
     type: "match_result",
-    title: `${winner.name} پیروز شد!`,
+    title: matchCount > 1 ? `${winner.name} ${matchCount} بار پیروز شد!` : `${winner.name} پیروز شد!`,
     description: `${winner.name} مقابل ${loser.name}`,
-    icon: "⚔️",
-    color: "blue",
+    icon: matchCount >= 5 ? "🔥" : "⚔️",
+    color: matchCount >= 5 ? "orange" : "blue",
     metadata: {
       winner_id: winner.id,
       winner_name: winner.name,
       loser_id: loser.id,
       loser_name: loser.name,
-      image_url: imageUrl || undefined, // Include image URL in metadata
-      note: note || undefined, // Include note in metadata
+      image_url: imageUrl || undefined,
+      note: note || undefined,
+      match_count: matchCount > 1 ? matchCount : undefined,
     },
     related_match_id: matchId,
     related_player_id: winner.id,

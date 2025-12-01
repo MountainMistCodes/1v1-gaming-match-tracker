@@ -4,19 +4,45 @@ import { PlayerCard } from "@/components/player-card"
 import { Medal } from "lucide-react"
 import type { Player, PlayerStats } from "@/lib/types"
 
+async function fetchAllRows(supabase: any, table: string, selectQuery = "*") {
+  const allData: any[] = []
+  const pageSize = 1000
+  let from = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(selectQuery)
+      .range(from, from + pageSize - 1)
+
+    if (error || !data || data.length === 0) {
+      hasMore = false
+    } else {
+      allData.push(...data)
+      from += pageSize
+      if (data.length < pageSize) {
+        hasMore = false
+      }
+    }
+  }
+
+  return allData
+}
+
 async function getLeaderboardData() {
   const supabase = await createClient()
 
-  const [playersRes, matchesRes, placementsRes] = await Promise.all([
-    supabase.from("players").select("*"),
-    supabase.from("matches").select("*"),
-    supabase.from("tournament_placements").select("*"),
+  const [players, matches, placements] = await Promise.all([
+    fetchAllRows(supabase, "players"),
+    fetchAllRows(supabase, "matches"),
+    fetchAllRows(supabase, "tournament_placements"),
   ])
 
   return {
-    players: (playersRes.data || []) as Player[],
-    matches: matchesRes.data || [],
-    placements: placementsRes.data || [],
+    players: players as Player[],
+    matches: matches,
+    placements: placements,
   }
 }
 

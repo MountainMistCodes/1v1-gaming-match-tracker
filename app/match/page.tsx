@@ -32,6 +32,7 @@ export default function RecordMatchPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [matchCount, setMatchCount] = useState(1)
 
   useEffect(() => {
     loadPlayers()
@@ -59,24 +60,50 @@ export default function RecordMatchPage() {
       imageUrl = await uploadImageToSupabase(imageBase64, "matches")
     }
 
-    const { data: match, error } = await supabase
-      .from("matches")
-      .insert({
-        player1_id: player1Id,
-        player2_id: player2Id,
-        winner_id: winnerId,
-        notes: notes.trim() || null,
-        image_url: imageUrl, // Save image URL
-      })
-      .select()
-      .single()
+    const winner = players.find((p) => p.id === winnerId)!
+    const loserId = winnerId === player1Id ? player2Id : player1Id
+    const loser = players.find((p) => p.id === loserId)!
 
-    if (!error && match) {
-      const winner = players.find((p) => p.id === winnerId)!
-      const loserId = winnerId === player1Id ? player2Id : player1Id
-      const loser = players.find((p) => p.id === loserId)!
+    const BATCH_SIZE = 500
+    const matchData = {
+      player1_id: player1Id,
+      player2_id: player2Id,
+      winner_id: winnerId,
+      notes: notes.trim() || null,
+      image_url: imageUrl,
+    }
 
-      await generateMatchActivity(match.id, winner, loser, imageUrl, notes.trim() || null)
+    let allMatches: any[] = []
+    let hasError = false
+
+    // Insert in batches
+    for (let i = 0; i < matchCount; i += BATCH_SIZE) {
+      const batchSize = Math.min(BATCH_SIZE, matchCount - i)
+      const batchInserts = Array(batchSize).fill(matchData)
+
+      const { data: batchMatches, error } = await supabase.from("matches").insert(batchInserts).select()
+
+      if (error) {
+        console.error("Batch insert error:", error)
+        hasError = true
+        break
+      }
+
+      if (batchMatches) {
+        allMatches = [...allMatches, ...batchMatches]
+      }
+    }
+
+    if (!hasError && allMatches.length > 0) {
+      // Generate activity for the batch (only one activity for all matches)
+      await generateMatchActivity(
+        allMatches[0].id,
+        winner,
+        loser,
+        imageUrl,
+        matchCount > 1 ? `${matchCount} برد متوالی - ${notes.trim() || ""}`.trim() : notes.trim() || null,
+        matchCount,
+      )
 
       await checkAndGenerateStreakActivity(winnerId)
       await checkAndGenerateRivalryActivity(player1Id, player2Id)
@@ -88,7 +115,8 @@ export default function RecordMatchPage() {
         setPlayer2Id("")
         setWinnerId("")
         setNotes("")
-        setImageBase64(null) // Reset image
+        setImageBase64(null)
+        setMatchCount(1)
         setShowSuccess(false)
       }, 1500)
     }
@@ -100,7 +128,8 @@ export default function RecordMatchPage() {
     setPlayer2Id("")
     setWinnerId("")
     setNotes("")
-    setImageBase64(null) // Reset image
+    setImageBase64(null)
+    setMatchCount(1)
   }
 
   if (isLoading) {
@@ -136,7 +165,9 @@ export default function RecordMatchPage() {
             <Check className="h-10 w-10 text-success" />
           </div>
           <h2 className="text-xl font-semibold text-foreground mb-2">ثبت شد!</h2>
-          <p className="text-muted-foreground">مسابقه با موفقیت ذخیره شد</p>
+          <p className="text-muted-foreground">
+            {matchCount > 1 ? `${matchCount} مسابقه با موفقیت ذخیره شد` : "مسابقه با موفقیت ذخیره شد"}
+          </p>
         </div>
       ) : (
         <form onSubmit={submitMatch} className="px-4 py-6 space-y-6">
@@ -243,6 +274,34 @@ export default function RecordMatchPage() {
             </div>
           )}
 
+          {winnerId && (
+            <div className="bg-card border border-border rounded-2xl p-4">
+              <label className="text-sm text-muted-foreground mb-3 block">تعداد برد</label>
+              <div className="flex items-center justify-center gap-3">
+                <Input
+                  type="number"
+                  min="1"
+                  value={matchCount}
+                  onChange={(e) => {
+                    const val = Number.parseInt(e.target.value, 10)
+                    if (!isNaN(val) && val >= 1) {
+                      setMatchCount(val)
+                    } else if (e.target.value === "") {
+                      setMatchCount(1)
+                    }
+                  }}
+                  className="w-24 h-14 text-center text-2xl font-bold bg-secondary border-0 rounded-xl text-primary"
+                />
+                <span className="text-muted-foreground">مسابقه</span>
+              </div>
+              {matchCount > 1 && (
+                <p className="text-xs text-muted-foreground text-center mt-3">
+                  {winnerId === player1Id ? player1?.name : player2?.name} {matchCount} بار برنده شد
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Notes & Image */}
           {winnerId && (
             <>
@@ -275,7 +334,11 @@ export default function RecordMatchPage() {
               disabled={!player1Id || !player2Id || !winnerId || isSubmitting}
               className="flex-1 h-14 rounded-xl bg-primary hover:bg-primary/90"
             >
-              {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "ثبت مسابقه"}
+              {isSubmitting ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                `ثبت ${matchCount > 1 ? `${matchCount} مسابقه` : "مسابقه"}`
+              )}
             </Button>
           </div>
         </form>

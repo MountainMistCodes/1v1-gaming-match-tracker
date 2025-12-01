@@ -8,13 +8,39 @@ import { Users, Swords, Trophy, Medal, Award } from "lucide-react"
 import Image from "next/image"
 import type { Player, Match, Tournament, PlayerStats, Activity } from "@/lib/types"
 
+async function fetchAllRows(supabase: any, table: string, selectQuery = "*") {
+  const allData: any[] = []
+  const pageSize = 1000
+  let from = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(selectQuery)
+      .range(from, from + pageSize - 1)
+
+    if (error || !data || data.length === 0) {
+      hasMore = false
+    } else {
+      allData.push(...data)
+      from += pageSize
+      if (data.length < pageSize) {
+        hasMore = false
+      }
+    }
+  }
+
+  return allData
+}
+
 async function getDashboardData() {
   const supabase = await createClient()
 
   // Get all players
   const { data: players } = await supabase.from("players").select("*").order("created_at", { ascending: false })
 
-  // Get all matches with player details
+  // Get recent matches with player details (only last 5 for display)
   const { data: matches } = await supabase
     .from("matches")
     .select(`
@@ -33,8 +59,9 @@ async function getDashboardData() {
     .order("tournament_date", { ascending: false })
     .limit(5)
 
-  // Get tournament placements for counting wins
-  const { data: placements } = await supabase.from("tournament_placements").select("*")
+  const allMatches = await fetchAllRows(supabase, "matches")
+
+  const allPlacements = await fetchAllRows(supabase, "tournament_placements")
 
   const { data: activities } = await supabase
     .from("activities")
@@ -46,14 +73,15 @@ async function getDashboardData() {
     players: (players || []) as Player[],
     matches: (matches || []) as Match[],
     tournaments: (tournaments || []) as Tournament[],
-    placements: placements || [],
+    allMatches: allMatches,
+    placements: allPlacements,
     activities: (activities || []) as Activity[],
   }
 }
 
 function calculatePlayerStats(
   players: Player[],
-  matches: Match[],
+  matches: any[],
   placements: { player_id: string; placement: number }[],
 ): PlayerStats[] {
   return players.map((player) => {
@@ -76,18 +104,14 @@ function calculatePlayerStats(
 }
 
 export default async function HomePage() {
-  const { players, matches, tournaments, placements, activities } = await getDashboardData()
+  const { players, matches, tournaments, allMatches, placements, activities } = await getDashboardData()
 
-  // Get all matches for stats calculation
-  const supabase = await createClient()
-  const { data: allMatches } = await supabase.from("matches").select("*")
-
-  const playerStats = calculatePlayerStats(players, allMatches || [], placements)
+  const playerStats = calculatePlayerStats(players, allMatches, placements)
   const topPlayers = [...playerStats]
     .sort((a, b) => b.totalWins - a.totalWins || b.winPercentage - a.winPercentage)
     .slice(0, 3)
 
-  const totalMatches = allMatches?.length || 0
+  const totalMatches = allMatches.length
 
   return (
     <div className="min-h-screen bg-background pb-24">

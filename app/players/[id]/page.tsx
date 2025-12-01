@@ -7,6 +7,43 @@ interface PageProps {
   params: Promise<{ id: string }>
 }
 
+async function fetchAllRows(
+  supabase: any,
+  table: string,
+  selectQuery = "*",
+  filter?: { column: string; op: string; value: string },
+) {
+  const allData: any[] = []
+  const pageSize = 1000
+  let from = 0
+  let hasMore = true
+
+  while (hasMore) {
+    let query = supabase
+      .from(table)
+      .select(selectQuery)
+      .range(from, from + pageSize - 1)
+
+    if (filter) {
+      query = query.or(filter.value)
+    }
+
+    const { data, error } = await query
+
+    if (error || !data || data.length === 0) {
+      hasMore = false
+    } else {
+      allData.push(...data)
+      from += pageSize
+      if (data.length < pageSize) {
+        hasMore = false
+      }
+    }
+  }
+
+  return allData
+}
+
 async function getPlayerData(playerId: string) {
   const supabase = await createClient()
 
@@ -15,17 +52,17 @@ async function getPlayerData(playerId: string) {
 
   if (!player) return null
 
-  // Get all matches for this player
-  const { data: matches } = await supabase
-    .from("matches")
-    .select(`
-      *,
-      player1:players!matches_player1_id_fkey(*),
-      player2:players!matches_player2_id_fkey(*),
-      winner:players!matches_winner_id_fkey(*)
-    `)
-    .or(`player1_id.eq.${playerId},player2_id.eq.${playerId}`)
-    .order("played_at", { ascending: false })
+  const matches = await fetchAllRows(
+    supabase,
+    "matches",
+    `
+    *,
+    player1:players!matches_player1_id_fkey(*),
+    player2:players!matches_player2_id_fkey(*),
+    winner:players!matches_winner_id_fkey(*)
+  `,
+    { column: "player1_id", op: "eq", value: `player1_id.eq.${playerId},player2_id.eq.${playerId}` },
+  )
 
   // Get tournament placements
   const { data: placements } = await supabase
@@ -42,7 +79,7 @@ async function getPlayerData(playerId: string) {
 
   return {
     player: player as Player,
-    matches: (matches || []) as Match[],
+    matches: matches as Match[],
     placements: (placements || []) as TournamentPlacement[],
     allPlayers: (allPlayers || []) as Player[],
   }
@@ -59,11 +96,15 @@ function calculateHeadToHead(playerId: string, matches: Match[], allPlayers: Pla
     )
 
     if (vsMatches.length > 0) {
+      // Count wins where THIS player (playerId) won
       const wins = vsMatches.filter((m) => m.winner_id === playerId).length
+      // Losses is simply total matches minus wins
+      const losses = vsMatches.length - wins
+
       headToHead.push({
         opponent,
         wins,
-        losses: vsMatches.length - wins,
+        losses,
         total: vsMatches.length,
       })
     }
