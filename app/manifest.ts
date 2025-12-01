@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next"
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "بلک لیست",
-    short_name: "بلک لیست",
-    description: "ردیاب مسابقات گیمینگ ۱ در مقابل ۱",
+    name: "BlackList",
+    short_name: "BlackList",
+    description: "ثبت نتابج مسابقات ۱ در مقابل ۱",
     start_url: "/",
     display: "standalone",
     background_color: "#0a0a0b",
