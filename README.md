@@ -1,30 +1,52 @@
-# Gaming match tracker
+# 1v1 Gaming Match Tracker
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
+This is a web application for tracking 1v1 gaming matches. It allows players to record their match results, view a leaderboard, and see their own stats.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/zzzhhh1280-4838s-projects/v0-gaming-match-tracker)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/d1aSLCu71CL)
+## Features
 
-## Overview
+*   **Match Tracking:** Record the results of 1v1 matches.
+*   **Leaderboard:** View a leaderboard of all players.
+*   **Player Profiles:** View individual player profiles with their match history and stats.
+*   **PWA Support:** The application can be installed as a Progressive Web App (PWA) for a native-like experience.
+*   **Dark Mode:** The application supports a dark mode theme.
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+## Getting Started
 
-## Deployment
+To get a local copy up and running, follow these simple steps.
 
-Your project is live at:
+### Prerequisites
 
-**[https://vercel.com/zzzhhh1280-4838s-projects/v0-gaming-match-tracker](https://vercel.com/zzzhhh1280-4838s-projects/v0-gaming-match-tracker)**
+*   Node.js (v18 or newer)
+*   pnpm (v8 or newer)
 
-## Build your app
+### Installation
 
-Continue building your app on:
+1.  Clone the repo
+    ```sh
+    git clone https://github.com/your-username/your-repo-name.git
+    ```
+2.  Install PNPM packages
+    ```sh
+    pnpm install
+    ```
+3.  Create a `.env.local` file in the root of the project and add your Supabase credentials:
+    ```
+    NEXT_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+    ```
 
-**[https://v0.app/chat/d1aSLCu71CL](https://v0.app/chat/d1aSLCu71CL)**
+### Running the application
 
-## How It Works
+```sh
+pnpm run dev
+```
 
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+## Tech Stack
+
+*   **Framework:** [Next.js](https://nextjs.org/)
+*   **Language:** [TypeScript](https://www.typescriptlang.org/)
+*   **Backend:** [Supabase](https://supabase.io/)
+*   **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+*   **UI:** [Radix UI](https://www.radix-ui.com/) and [shadcn/ui](https://ui.shadcn.com/)
+*   **PWA:** [next-pwa](https://www.npmjs.com/package/next-pwa)
+*   **Package Manager:** [pnpm](https://pnpm.io/)
