@@ -29,6 +29,22 @@ function isPWAInstalled(): boolean {
   return false
 }
 
+const DISMISS_COUNT_KEY = "pwa-install-dismissed-count"
+const LAST_DISMISS_KEY = "pwa-install-dismissed-last"
+
+const getCooldownDays = (dismissCount: number): number => {
+  switch (dismissCount) {
+    case 1:
+      return 3
+    case 2:
+      return 7
+    case 3:
+      return 30
+    default:
+      return 90
+  }
+}
+
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showPrompt, setShowPrompt] = useState(false)
@@ -44,10 +60,13 @@ export function PWAInstallPrompt() {
     }
 
     // Check if dismissed recently
-    const dismissed = localStorage.getItem("pwa-install-dismissed")
-    if (dismissed) {
-      const dismissedTime = Number.parseInt(dismissed)
-      if (Date.now() - dismissedTime < 3 * 24 * 60 * 60 * 1000) {
+    const dismissCount = Number.parseInt(localStorage.getItem(DISMISS_COUNT_KEY) || "0")
+    const lastDismissedTime = Number.parseInt(localStorage.getItem(LAST_DISMISS_KEY) || "0")
+
+    if (dismissCount > 0) {
+      const cooldownDays = getCooldownDays(dismissCount)
+      const cooldownMillis = cooldownDays * 24 * 60 * 60 * 1000
+      if (Date.now() - lastDismissedTime < cooldownMillis) {
         return
       }
     }
@@ -57,6 +76,8 @@ export function PWAInstallPrompt() {
     setIsIOS(isIOSDevice)
 
     if (isIOSDevice) {
+       // For iOS, we don't have the install prompt event, so we just show the banner.
+       // We'll respect the same dismissal logic.
       setTimeout(() => setShowPrompt(true), 2000)
       return
     }
@@ -70,6 +91,9 @@ export function PWAInstallPrompt() {
 
     const installedHandler = () => {
       localStorage.setItem("pwa-installed", "true")
+      // Clear dismissal flags on install
+      localStorage.removeItem(DISMISS_COUNT_KEY)
+      localStorage.removeItem(LAST_DISMISS_KEY)
       setShowPrompt(false)
       setDeferredPrompt(null)
       setIsInstalled(true)
@@ -92,6 +116,8 @@ export function PWAInstallPrompt() {
 
     if (outcome === "accepted") {
       localStorage.setItem("pwa-installed", "true")
+      localStorage.removeItem(DISMISS_COUNT_KEY)
+      localStorage.removeItem(LAST_DISMISS_KEY)
       setShowPrompt(false)
       setIsInstalled(true)
     }
@@ -100,7 +126,10 @@ export function PWAInstallPrompt() {
 
   const handleDismiss = () => {
     setShowPrompt(false)
-    localStorage.setItem("pwa-install-dismissed", Date.now().toString())
+    const currentDismissCount = Number.parseInt(localStorage.getItem(DISMISS_COUNT_KEY) || "0")
+    const newDismissCount = currentDismissCount + 1
+    localStorage.setItem(DISMISS_COUNT_KEY, newDismissCount.toString())
+    localStorage.setItem(LAST_DISMISS_KEY, Date.now().toString())
   }
 
   if (isInstalled || !showPrompt) return null
