@@ -64,6 +64,8 @@ async function getPlayerData(playerId: string) {
     { column: "player1_id", op: "eq", value: `player1_id.eq.${playerId},player2_id.eq.${playerId}` },
   )
 
+  const sortedMatches = matches.sort((a, b) => new Date(b.played_at).getTime() - new Date(a.played_at).getTime())
+
   // Get tournament placements
   const { data: placements } = await supabase
     .from("tournament_placements")
@@ -79,7 +81,7 @@ async function getPlayerData(playerId: string) {
 
   return {
     player: player as Player,
-    matches: matches as Match[],
+    matches: sortedMatches as Match[],
     placements: (placements || []) as TournamentPlacement[],
     allPlayers: (allPlayers || []) as Player[],
   }
