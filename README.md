@@ -22,24 +22,24 @@ To get a local copy up and running, follow these simple steps.
 ### Installation
 
 1.  Clone the repo
-    \`\`\`sh
+    ```sh
     git clone https://github.com/your-username/your-repo-name.git
-    \`\`\`
+    ```
 2.  Install PNPM packages
-    \`\`\`sh
+    ```sh
     pnpm install
-    \`\`\`
+    ```
 3.  Create a `.env.local` file in the root of the project and add your Supabase credentials:
-    \`\`\`
+    ```
     NEXT_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
     NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
-    \`\`\`
+    ```
 
 ### Running the application
 
-\`\`\`sh
+```sh
 pnpm run dev
-\`\`\`
+```
 
 ## Tech Stack
 
