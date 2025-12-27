@@ -32,7 +32,7 @@ export default function RecordMatchPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
-  const [matchCount, setMatchCount] = useState(1)
+  const [matchCount, setMatchCount] = useState<number | "">(1)
 
   useEffect(() => {
     loadPlayers()
@@ -282,11 +282,20 @@ export default function RecordMatchPage() {
                   type="number"
                   min="1"
                   value={matchCount}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => {
-                    const val = Number.parseInt(e.target.value, 10)
-                    if (!isNaN(val) && val >= 1) {
-                      setMatchCount(val)
-                    } else if (e.target.value === "") {
+                    const val = e.target.value
+                    if (val === "") {
+                      setMatchCount("")
+                    } else {
+                      const num = Number.parseInt(val, 10)
+                      if (!isNaN(num) && num >= 1) {
+                        setMatchCount(num)
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === "") {
                       setMatchCount(1)
                     }
                   }}
