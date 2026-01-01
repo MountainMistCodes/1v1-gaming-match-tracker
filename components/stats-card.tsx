@@ -1,6 +1,9 @@
+"use client"
+
 import { cn } from "@/lib/utils"
 import type { LucideIcon } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import * as React from "react"
 
 interface StatsCardProps {
   title: string
@@ -11,11 +14,14 @@ interface StatsCardProps {
 }
 
 export function StatsCard({ title, value, icon: Icon, className, variant = "default" }: StatsCardProps) {
+  const [open, setOpen] = React.useState(false)
+
   return (
     <TooltipProvider delayDuration={0}>
-      <Tooltip>
+      <Tooltip open={open} onOpenChange={setOpen}>
         <TooltipTrigger asChild>
           <div
+            onClick={() => setOpen(!open)}
             className={cn(
               "rounded-2xl p-4 border border-border cursor-pointer active:scale-95 transition-transform",
               variant === "default" && "bg-card",
