@@ -1,20 +1,27 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import type { LucideIcon } from "lucide-react"
+import { Users, Swords, Trophy } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import * as React from "react"
 
 interface StatsCardProps {
   title: string
   value: string | number
-  icon: LucideIcon
+  iconName: "users" | "swords" | "trophy"
   className?: string
   variant?: "default" | "primary" | "accent" | "success"
 }
 
-export function StatsCard({ title, value, icon: Icon, className, variant = "default" }: StatsCardProps) {
+const icons = {
+  users: Users,
+  swords: Swords,
+  trophy: Trophy,
+}
+
+export function StatsCard({ title, value, iconName, className, variant = "default" }: StatsCardProps) {
   const [open, setOpen] = React.useState(false)
+  const Icon = icons[iconName]
 
   return (
     <TooltipProvider delayDuration={0}>

@@ -1,16 +1,25 @@
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { type LucideIcon, ChevronLeft } from "lucide-react"
+import { Users, Swords, Trophy, Medal, ChevronLeft } from "lucide-react"
 
 interface ActionCardProps {
   href: string
   title: string
   description: string
-  icon: LucideIcon
+  iconName: "users" | "swords" | "trophy" | "medal"
   variant?: "default" | "primary" | "accent"
 }
 
-export function ActionCard({ href, title, description, icon: Icon, variant = "default" }: ActionCardProps) {
+const icons = {
+  users: Users,
+  swords: Swords,
+  trophy: Trophy,
+  medal: Medal,
+}
+
+export function ActionCard({ href, title, description, iconName, variant = "default" }: ActionCardProps) {
+  const Icon = icons[iconName]
+
   return (
     <Link
       href={href}
