@@ -2,11 +2,10 @@ import { createClient } from "@/lib/supabase/server"
 import { BottomNav } from "@/components/navigation"
 import { StatsCard } from "@/components/stats-card"
 import { ActionCard } from "@/components/action-card"
-import { PlayerCard } from "@/components/player-card"
 import { ActivityFeed } from "@/components/activity-feed"
 import { Award } from "lucide-react"
 import Image from "next/image"
-import type { Player, Match, Tournament, PlayerStats, Activity } from "@/lib/types"
+import type { Player, Match, Tournament, Activity } from "@/lib/types"
 
 async function fetchAllRows(supabase: any, table: string, selectQuery = "*") {
   const allData: any[] = []
@@ -61,9 +60,14 @@ async function getDashboardData() {
     .order("tournament_date", { ascending: false })
     .limit(5)
 
-  const allMatches = await fetchAllRows(supabase, "matches")
+  // Get top 3 players by Glicko-2 rating
+  const { data: topPlayerRatings } = await supabase
+    .from("player_ratings")
+    .select("player_id, rating, rating_deviation, volatility")
+    .order("rating", { ascending: false })
+    .limit(3)
 
-  const allPlacements = await fetchAllRows(supabase, "tournament_placements")
+  const allMatches = await fetchAllRows(supabase, "matches")
 
   const { data: activities } = await supabase
     .from("activities")
@@ -76,61 +80,33 @@ async function getDashboardData() {
     matches: (matches || []) as Match[],
     tournaments: (tournaments || []) as Tournament[],
     allMatches: allMatches,
-    placements: allPlacements,
+    topPlayerRatings: topPlayerRatings || [],
     activities: (activities || []) as Activity[],
   }
 }
 
-const MIN_GAMES_FOR_RANKING = 10
-
-function calculateRankingScore(stats: PlayerStats): number {
-  const { totalMatches, winPercentage, tournamentWins } = stats
-
-  let score = winPercentage
-
-  if (totalMatches < MIN_GAMES_FOR_RANKING) {
-    const confidenceFactor = totalMatches / MIN_GAMES_FOR_RANKING
-    score = 50 + (score - 50) * confidenceFactor
-  }
-
-  score += tournamentWins * 2
-
-  return score
-}
-
-function calculatePlayerStats(
+function mapTopPlayersWithRatings(
   players: Player[],
-  matches: any[],
-  placements: { player_id: string; placement: number }[],
-): PlayerStats[] {
-  return players.map((player) => {
-    const playerMatches = matches.filter((m) => m.player1_id === player.id || m.player2_id === player.id)
-    const wins = matches.filter((m) => m.winner_id === player.id).length
-    const losses = playerMatches.length - wins
-    const tournamentWins = placements.filter((p) => p.player_id === player.id && p.placement === 1).length
-    const tournamentParticipations = placements.filter((p) => p.player_id === player.id).length
+  topPlayerRatings: { player_id: string; rating: number; rating_deviation: number; volatility: number }[],
+): (Player & { rating: number })[] {
+  const ratingMap = new Map(topPlayerRatings.map((r) => [r.player_id, r.rating]))
 
-    return {
-      player,
-      totalWins: wins,
-      totalLosses: losses,
-      totalMatches: playerMatches.length,
-      winPercentage: playerMatches.length > 0 ? (wins / playerMatches.length) * 100 : 0,
-      tournamentWins,
-      tournamentParticipations,
-    }
-  })
+  return topPlayerRatings
+    .map((rating) => {
+      const player = players.find((p) => p.id === rating.player_id)
+      if (!player) return null
+      return {
+        ...player,
+        rating: rating.rating,
+      }
+    })
+    .filter((p) => p !== null) as (Player & { rating: number })[]
 }
 
 export default async function HomePage() {
-  const { players, matches, tournaments, allMatches, placements, activities } = await getDashboardData()
+  const { players, matches, tournaments, allMatches, topPlayerRatings, activities } = await getDashboardData()
 
-  const playerStats = calculatePlayerStats(players, allMatches, placements)
-  const topPlayers = [...playerStats]
-    .map((stats) => ({ stats, rankingScore: calculateRankingScore(stats) }))
-    .sort((a, b) => b.rankingScore - a.rankingScore)
-    .slice(0, 3)
-    .map((s) => s.stats)
+  const topPlayers = mapTopPlayersWithRatings(players, topPlayerRatings)
 
   const totalMatches = allMatches.length
 
@@ -189,8 +165,12 @@ export default async function HomePage() {
               <h2 className="text-lg font-semibold text-foreground">برترین‌ها</h2>
             </div>
             <div className="space-y-2">
-              {topPlayers.map((stats, index) => (
-                <PlayerCard key={stats.player.id} stats={stats} rank={index + 1} showRank />
+              {topPlayers.map((player, index) => (
+                <div key={player.id} className="flex items-center gap-3 p-3 bg-card rounded-lg border border-border">
+                  <span className="font-bold text-muted-foreground min-w-8 text-center">{index + 1}</span>
+                  <span className="flex-1 font-medium">{player.name}</span>
+                  <span className="font-semibold text-primary">{player.rating.toFixed(0)}</span>
+                </div>
               ))}
             </div>
           </section>

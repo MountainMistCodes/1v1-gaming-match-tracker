@@ -214,19 +214,19 @@ export const processTournamentPlacementRating = async (
 
   switch (placement) {
     case 1:
-      // 1st place: Win against slightly above-average opponent
-      virtualOpponentRating = avgFieldRating + 200
+      // 1st place: Win against strong opponent (field average + 150)
+      virtualOpponentRating = avgFieldRating + 150
       result = 1
       break
     case 2:
-      // 2nd place: Draw equivalent against average opponent
-      virtualOpponentRating = avgFieldRating
-      result = 0.5
+      // 2nd place: Win against slightly above-average opponent (+50 points guaranteed)
+      virtualOpponentRating = avgFieldRating + 50
+      result = 1
       break
     case 3:
-      // 3rd place: Loss against slightly below-average opponent
-      virtualOpponentRating = avgFieldRating - 200
-      result = 0
+      // 3rd place: Win against average opponent (small positive gain)
+      virtualOpponentRating = avgFieldRating
+      result = 1
       break
     default:
       return null
