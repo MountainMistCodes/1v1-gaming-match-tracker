@@ -216,6 +216,7 @@ export function calculateAllPlayerRatings(
         winPercentage: totalMatches > 0 ? (wins / totalMatches) * 100 : 0,
         tournamentWins,
         tournamentParticipations,
+        rating: ratings.get(player.id) || 1000,
       }
 
       return {

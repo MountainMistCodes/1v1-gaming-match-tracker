@@ -45,6 +45,7 @@ export interface PlayerStats {
   winPercentage: number
   tournamentWins: number
   tournamentParticipations: number
+  rating: number
 }
 
 export interface HeadToHead {
