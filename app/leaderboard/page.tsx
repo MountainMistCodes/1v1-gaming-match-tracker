@@ -3,7 +3,7 @@ import { BottomNav, PageHeader } from "@/components/navigation"
 import { PlayerCard } from "@/components/player-card"
 import { Medal, Info } from "lucide-react"
 import type { Player, PlayerStats } from "@/lib/types"
-import { calculateStats, calculateAllPlayerRatings } from "@/lib/fair-rating-calculator"
+import { calculateAllPlayerRatings } from "@/lib/fair-rating-calculator"
 
 async function fetchAllRows(supabase: any, table: string, selectQuery = "*") {
   const allData: any[] = []
@@ -60,10 +60,20 @@ export default async function LeaderboardPage() {
       <div className="px-4 py-4">
         <div className="bg-card/50 border border-border rounded-xl p-3 mb-4 flex items-start gap-2">
           <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-          <p className="text-xs text-muted-foreground">
-            رتبه‌بندی بر اساس درصد برد، با در نظر گرفتن حداقل {MIN_GAMES_FOR_RANKING} بازی برای رتبه‌بندی عادلانه و امتیاز
-            اضافی برای قهرمانی تورنمنت
-          </p>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>
+              🏆 <strong>سیستم رتبه‌بندی منصفانه:</strong> امتیازات بر اساس قدرت حریف محاسبه می‌شود. برد بر حریف قوی‌تر = امتیاز بیش‌تر
+            </p>
+            <p>
+              ⚔️ <strong>مسابقات ۱ در ۱:</strong> بازیکن را با نزدیک‌ترین رتبه‌بندی مقایسه کنید و بیش‌تر امتیاز بگیرید
+            </p>
+            <p>
+              🥇 <strong>تورنمنت‌ها:</strong> رتبه‌بندی ۱ = +۴۰، رتبه‌بندی ۲ = +۲۰، رتبه‌بندی ۳ = +۱۰ امتیاز
+            </p>
+            <p>
+              📊 <strong>حداقل بازی‌ها:</strong> فقط بازیکنانی که حداقل {MIN_GAMES_FOR_RANKING} بازی انجام داده‌اند در رتبه‌بندی نمایش داده می‌شوند
+            </p>
+          </div>
         </div>
 
         {rankings.length === 0 ? (
