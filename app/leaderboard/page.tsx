@@ -48,43 +48,54 @@ async function getLeaderboardData() {
 
 const MIN_GAMES_FOR_RANKING = 10 // Minimum games to be ranked fairly
 
-function calculateNetWinRate(
+export function calculateNetWinRate(
   playerId: string,
   matches: { player1_id: string; player2_id: string; winner_id: string }[],
   players: Player[],
 ): number {
-  const playerMatches = matches.filter((m) => m.player1_id === playerId || m.player2_id === playerId)
-  
+  const playerMatches = matches.filter(
+    (m) => m.player1_id === playerId || m.player2_id === playerId,
+  )
+
   if (playerMatches.length === 0) return 0
 
-  // Calculate total wins for each player for strength ranking
-  const playerWinsMap = new Map<string, number>()
+  // Build win/loss record for all players
+  const recordMap = new Map<string, { wins: number; matches: number }>()
+
   for (const player of players) {
-    const wins = matches.filter((m) => m.winner_id === player.id).length
-    playerWinsMap.set(player.id, wins)
+    const playerGames = matches.filter(
+      (m) => m.player1_id === player.id || m.player2_id === player.id,
+    )
+    const wins = playerGames.filter((m) => m.winner_id === player.id).length
+    recordMap.set(player.id, { wins, matches: playerGames.length })
   }
 
-  const playerTotalWins = playerWinsMap.get(playerId) || 0
-  
   let weightedScore = 0
   let totalWeight = 0
 
-  // Calculate weighted net win rate based on opponent strength
   for (const match of playerMatches) {
     const isWinner = match.winner_id === playerId
-    const opponentId = match.player1_id === playerId ? match.player2_id : match.player1_id
-    const opponentWins = playerWinsMap.get(opponentId) || 0
-    
-    // Weight: opponent with more wins = stronger = higher weight
-    const weight = 1 + (opponentWins / Math.max(playerTotalWins, 1)) * 0.5
-    
-    const score = isWinner ? weight : -weight
-    weightedScore += score
+    const opponentId =
+      match.player1_id === playerId
+        ? match.player2_id
+        : match.player1_id
+
+    const opponentRecord = recordMap.get(opponentId)
+    const opponentWinRate =
+      opponentRecord && opponentRecord.matches > 0
+        ? opponentRecord.wins / opponentRecord.matches
+        : 0.5
+
+    // Weight based on opponent strength (bounded)
+    const weight = 1 + opponentWinRate // range: 1 → 2
+
+    weightedScore += isWinner ? weight : -weight
     totalWeight += weight
   }
 
   return (weightedScore / totalWeight) * 100
 }
+
 
 function calculateRankingScore(stats: PlayerStats): number {
   const { totalMatches, winPercentage, tournamentWins } = stats
