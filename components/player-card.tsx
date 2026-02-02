@@ -75,15 +75,8 @@ export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
                       <Info className="h-3 w-3" />
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs">
-                    <div className="space-y-2">
-                      <p className="font-semibold">میزان برتری شبکه (Net Win Rate)</p>
-                      <p className="text-xs">نشان می‌دهد که بازیکن علیه کدام حریفان برتری دارد.</p>
-                      <div className="text-xs space-y-1 mt-2 border-t border-muted pt-2">
-                        <p><span className="text-green-400">مثبت (+)</span> = بیش‌تر برد علیه بازیکنان قوی</p>
-                        <p><span className="text-red-400">منفی (−)</span> = بیش‌تر باخت علیه بازیکنان ضعیف</p>
-                      </div>
-                    </div>
+                  <TooltipContent side="top" className="text-xs">
+                    <p>میزان برتری بر اساس سختی حریفان</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
