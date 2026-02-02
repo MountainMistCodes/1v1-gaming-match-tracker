@@ -48,56 +48,6 @@ async function getLeaderboardData() {
 
 const MIN_GAMES_FOR_RANKING = 10 // Minimum games to be ranked fairly
 
-export function calculateNetWinRate(
-  playerId: string,
-  matches: { player1_id: string; player2_id: string; winner_id: string }[],
-  players: Player[],
-): number {
-  const playerMatches = matches.filter(
-    (m) => m.player1_id === playerId || m.player2_id === playerId,
-  )
-
-  if (playerMatches.length === 0) return 0
-
-  // Build win/loss record for all players
-  const recordMap = new Map<string, { wins: number; matches: number }>()
-
-  for (const player of players) {
-    const playerGames = matches.filter(
-      (m) => m.player1_id === player.id || m.player2_id === player.id,
-    )
-    const wins = playerGames.filter((m) => m.winner_id === player.id).length
-    recordMap.set(player.id, { wins, matches: playerGames.length })
-  }
-
-  let weightedScore = 0
-  let totalWeight = 0
-
-  for (const match of playerMatches) {
-    const isWinner = match.winner_id === playerId
-    const opponentId =
-      match.player1_id === playerId
-        ? match.player2_id
-        : match.player1_id
-
-    const opponentRecord = recordMap.get(opponentId)
-    const opponentWinRate =
-      opponentRecord && opponentRecord.matches > 0
-        ? opponentRecord.wins / opponentRecord.matches
-        : 0.5
-
-    // Weight based on opponent strength (bounded)
-    const weight = 1 + opponentWinRate // range: 1 → 2
-
-    weightedScore += isWinner ? weight : -weight
-    totalWeight += weight
-  }
-
-  return (weightedScore / totalWeight) * 100
-}
-
-
-
 function calculateRankingScore(stats: PlayerStats): number {
   const { totalMatches, winPercentage, tournamentWins } = stats
 
@@ -133,7 +83,6 @@ function calculateStats(
       const losses = playerMatches.length - wins
       const tournamentWins = placements.filter((p) => p.player_id === player.id && p.placement === 1).length
       const tournamentParticipations = placements.filter((p) => p.player_id === player.id).length
-      const netWinRate = calculateNetWinRate(player.id, matches, players)
 
       const stats: PlayerStats = {
         player,
@@ -141,7 +90,6 @@ function calculateStats(
         totalLosses: losses,
         totalMatches: playerMatches.length,
         winPercentage: playerMatches.length > 0 ? (wins / playerMatches.length) * 100 : 0,
-        netWinRate,
         tournamentWins,
         tournamentParticipations,
       }

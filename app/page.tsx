@@ -83,44 +83,6 @@ async function getDashboardData() {
 
 const MIN_GAMES_FOR_RANKING = 10
 
-function calculateNetWinRate(
-  playerId: string,
-  matches: any[],
-  players: Player[],
-): number {
-  const playerMatches = matches.filter((m) => m.player1_id === playerId || m.player2_id === playerId)
-  
-  if (playerMatches.length === 0) return 0
-
-  // Calculate total wins for each player for strength ranking
-  const playerWinsMap = new Map<string, number>()
-  for (const player of players) {
-    const wins = matches.filter((m) => m.winner_id === player.id).length
-    playerWinsMap.set(player.id, wins)
-  }
-
-  const playerTotalWins = playerWinsMap.get(playerId) || 0
-  
-  let weightedScore = 0
-  let totalWeight = 0
-
-  // Calculate weighted net win rate based on opponent strength
-  for (const match of playerMatches) {
-    const isWinner = match.winner_id === playerId
-    const opponentId = match.player1_id === playerId ? match.player2_id : match.player1_id
-    const opponentWins = playerWinsMap.get(opponentId) || 0
-    
-    // Weight: opponent with more wins = stronger = higher weight
-    const weight = 1 + (opponentWins / Math.max(playerTotalWins, 1)) * 0.5
-    
-    const score = isWinner ? weight : -weight
-    weightedScore += score
-    totalWeight += weight
-  }
-
-  return (weightedScore / totalWeight) * 100
-}
-
 function calculateRankingScore(stats: PlayerStats): number {
   const { totalMatches, winPercentage, tournamentWins } = stats
 
@@ -147,15 +109,14 @@ function calculatePlayerStats(
     const losses = playerMatches.length - wins
     const tournamentWins = placements.filter((p) => p.player_id === player.id && p.placement === 1).length
     const tournamentParticipations = placements.filter((p) => p.player_id === player.id).length
-    const netWinRate = calculateNetWinRate(player.id, matches, players)
+    const totalMatches = playerMatches.length
 
     return {
       player,
       totalWins: wins,
       totalLosses: losses,
       totalMatches: playerMatches.length,
-      winPercentage: playerMatches.length > 0 ? (wins / playerMatches.length) * 100 : 0,
-      netWinRate,
+      winPercentage: totalMatches > 0 ? ((wins - losses) / totalMatches) * 100 : 0,
       tournamentWins,
       tournamentParticipations,
     }

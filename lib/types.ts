@@ -43,7 +43,6 @@ export interface PlayerStats {
   totalLosses: number
   totalMatches: number
   winPercentage: number
-  netWinRate: number
   tournamentWins: number
   tournamentParticipations: number
 }

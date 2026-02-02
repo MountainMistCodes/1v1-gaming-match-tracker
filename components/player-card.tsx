@@ -1,12 +1,6 @@
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { Trophy, ChevronLeft, User, Info } from "lucide-react"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Trophy, ChevronLeft, User } from "lucide-react"
 import type { PlayerStats } from "@/lib/types"
 
 interface PlayerCardProps {
@@ -16,7 +10,7 @@ interface PlayerCardProps {
 }
 
 export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
-  const { player, totalWins, totalLosses, netWinRate, tournamentWins } = stats
+  const { player, totalWins, totalLosses, winPercentage, tournamentWins } = stats
 
   return (
     <Link
@@ -67,19 +61,7 @@ export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
                 <span className="text-muted-foreground"> - </span>
                 <span className="text-destructive font-medium">{totalLosses}</span>
               </span>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-xs text-muted-foreground cursor-help flex items-center gap-1">
-                      ({netWinRate.toFixed(1)}%)
-                      <Info className="h-3 w-3" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">
-                    <p>میزان برتری بر اساس سختی حریفان</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <span className="text-xs text-muted-foreground">({winPercentage.toFixed(0)}%)</span>
             </div>
           </div>
         </div>
