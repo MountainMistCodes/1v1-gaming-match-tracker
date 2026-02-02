@@ -97,6 +97,7 @@ export function calculateNetWinRate(
 }
 
 
+
 function calculateRankingScore(stats: PlayerStats): number {
   const { totalMatches, winPercentage, tournamentWins } = stats
 
