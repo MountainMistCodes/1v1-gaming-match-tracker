@@ -79,27 +79,20 @@ function calculateTournamentPoints(
 /**
  * Calculate all player ratings
  */
-function logDebugInfo(playerStatsArray: PlayerStats[]): void {
-  if (typeof window !== "undefined") {
-    console.log("[v0 Rating Debug]", {
-      totalPlayers: playerStatsArray.length,
-      topPlayer: playerStatsArray[0]
-        ? {
-            name: playerStatsArray[0].player.name,
-            rating: playerStatsArray[0].rating.toFixed(2),
-            wins: playerStatsArray[0].totalWins,
-            matches: playerStatsArray[0].totalMatches,
-          }
-        : null,
-    })
-  }
-}
-
 export function calculateAllPlayerRatings(
   players: Player[],
   matches: { player1_id: string; player2_id: string; winner_id: string }[],
   placements: { player_id: string; placement: number }[],
 ): PlayerStats[] {
+  // Calculate tournament points once (not repeated in iterations)
+  const tournamentPointsMap = new Map<string, number>()
+  for (const player of players) {
+    tournamentPointsMap.set(
+      player.id,
+      calculateTournamentPoints(player.id, placements),
+    )
+  }
+
   // Initialize ratings
   let ratings = new Map<string, number>()
   for (const player of players) {
@@ -142,10 +135,8 @@ export function calculateAllPlayerRatings(
         matchPoints += isWinner ? winnerGains : loserLoses
       }
 
-      const tournamentPoints = calculateTournamentPoints(
-        player.id,
-        placements,
-      )
+      // Use pre-calculated tournament points (only once, not per iteration)
+      const tournamentPoints = tournamentPointsMap.get(player.id) || 0
 
       // Confidence factor limits impact for low-game players
       const confidence = Math.min(
@@ -153,7 +144,13 @@ export function calculateAllPlayerRatings(
         totalMatches / MIN_GAMES_FOR_RANKING,
       )
 
-      const delta = (matchPoints + tournamentPoints) * confidence
+      // On first iteration, add all accumulated tournament points
+      // On subsequent iterations, only use match points for refinement
+      const isFirstIteration = i === 0
+      const pointsToAdd = isFirstIteration
+        ? matchPoints + tournamentPoints
+        : matchPoints
+      const delta = pointsToAdd * confidence
 
       const currentRating = ratings.get(player.id) || 1000
       newRatings.set(player.id, currentRating + delta)
@@ -202,7 +199,6 @@ export function calculateAllPlayerRatings(
     )
     .sort((a, b) => b.rating - a.rating)
 
-  logDebugInfo(playerStatsArray)
   return playerStatsArray
 }
 

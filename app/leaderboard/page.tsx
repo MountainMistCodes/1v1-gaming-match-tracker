@@ -51,13 +51,7 @@ const MIN_GAMES_FOR_RANKING = 10
 
 export default async function LeaderboardPage() {
   const { players, matches, placements } = await getLeaderboardData()
-  console.log("[v0] Leaderboard - Data Summary:", {
-    totalPlayers: players?.length,
-    totalMatches: matches?.length,
-    totalPlacements: placements?.length,
-  })
   const rankings = calculateAllPlayerRatings(players, matches, placements)
-  console.log("[v0] Leaderboard - Top 3 Rankings:", rankings.slice(0, 3).map((p) => ({ name: p.player.name, rating: p.rating })))
 
   return (
     <div className="min-h-screen bg-background pb-24">

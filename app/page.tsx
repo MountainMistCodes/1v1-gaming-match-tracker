@@ -88,14 +88,8 @@ async function getDashboardData() {
 export default async function HomePage() {
   const { players, matches, tournaments, allMatches, placements, activities } = await getDashboardData()
 
-  console.log("[v0] Main Page - Data Summary:", {
-    totalPlayers: players?.length,
-    totalMatches: allMatches?.length,
-    totalPlacements: placements?.length,
-  })
   const allRankings = calculateAllPlayerRatings(players, allMatches, placements)
   const topPlayers = allRankings.slice(0, 3)
-  console.log("[v0] Main Page - Top 3 Rankings:", topPlayers.map((p) => ({ name: p.player.name, rating: p.rating })))
 
   const totalMatches = allMatches.length
 
