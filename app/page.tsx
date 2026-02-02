@@ -4,11 +4,9 @@ import { StatsCard } from "@/components/stats-card"
 import { ActionCard } from "@/components/action-card"
 import { PlayerCard } from "@/components/player-card"
 import { ActivityFeed } from "@/components/activity-feed"
-import { calculateAllPlayerRatings } from "@/lib/fair-rating-calculator"
 import { Award } from "lucide-react"
 import Image from "next/image"
-import type { Player, Match, Tournament, Activity } from "@/lib/types"
-import { PlayerStats } from "@/lib/types" // Declare PlayerStats here
+import type { Player, Match, Tournament, PlayerStats, Activity } from "@/lib/types"
 
 async function fetchAllRows(supabase: any, table: string, selectQuery = "*") {
   const allData: any[] = []
@@ -83,13 +81,99 @@ async function getDashboardData() {
   }
 }
 
+const MIN_GAMES_FOR_RANKING = 10
 
+function calculateNetWinRate(
+  playerId: string,
+  matches: any[],
+  players: Player[],
+): number {
+  const playerMatches = matches.filter((m) => m.player1_id === playerId || m.player2_id === playerId)
+  
+  if (playerMatches.length === 0) return 0
+
+  let netScore = 0
+  const playerRanks = new Map<string, number>()
+  
+  // First pass: calculate win counts to determine rough rank
+  for (const player of players) {
+    const playerWins = matches.filter((m) => m.winner_id === player.id).length
+    playerRanks.set(player.id, playerWins)
+  }
+
+  // Calculate net win rate based on opponent strength
+  for (const match of playerMatches) {
+    const isWinner = match.winner_id === playerId
+    const opponentId = match.player1_id === playerId ? match.player2_id : match.player1_id
+    
+    const playerWins = playerRanks.get(playerId) || 0
+    const opponentWins = playerRanks.get(opponentId) || 0
+    
+    // Stronger opponents (more wins) give more credit for wins
+    const strengthDifference = opponentWins - playerWins
+    const baseCredit = 1
+    const strengthBonus = strengthDifference > 0 ? Math.min(strengthDifference * 0.05, 0.5) : Math.max(strengthDifference * 0.1, -0.3)
+    
+    if (isWinner) {
+      netScore += baseCredit + strengthBonus
+    } else {
+      netScore -= baseCredit + (strengthBonus > 0 ? strengthBonus : 0) // Penalize losses more against weaker opponents
+    }
+  }
+
+  return (netScore / playerMatches.length) * 100
+}
+
+function calculateRankingScore(stats: PlayerStats): number {
+  const { totalMatches, winPercentage, tournamentWins } = stats
+
+  let score = winPercentage
+
+  if (totalMatches < MIN_GAMES_FOR_RANKING) {
+    const confidenceFactor = totalMatches / MIN_GAMES_FOR_RANKING
+    score = 50 + (score - 50) * confidenceFactor
+  }
+
+  score += tournamentWins * 2
+
+  return score
+}
+
+function calculatePlayerStats(
+  players: Player[],
+  matches: any[],
+  placements: { player_id: string; placement: number }[],
+): PlayerStats[] {
+  return players.map((player) => {
+    const playerMatches = matches.filter((m) => m.player1_id === player.id || m.player2_id === player.id)
+    const wins = matches.filter((m) => m.winner_id === player.id).length
+    const losses = playerMatches.length - wins
+    const tournamentWins = placements.filter((p) => p.player_id === player.id && p.placement === 1).length
+    const tournamentParticipations = placements.filter((p) => p.player_id === player.id).length
+    const netWinRate = calculateNetWinRate(player.id, matches, players)
+
+    return {
+      player,
+      totalWins: wins,
+      totalLosses: losses,
+      totalMatches: playerMatches.length,
+      winPercentage: playerMatches.length > 0 ? (wins / playerMatches.length) * 100 : 0,
+      netWinRate,
+      tournamentWins,
+      tournamentParticipations,
+    }
+  })
+}
 
 export default async function HomePage() {
   const { players, matches, tournaments, allMatches, placements, activities } = await getDashboardData()
 
-  const allRankings = calculateAllPlayerRatings(players, allMatches, placements)
-  const topPlayers = allRankings.slice(0, 3)
+  const playerStats = calculatePlayerStats(players, allMatches, placements)
+  const topPlayers = [...playerStats]
+    .map((stats) => ({ stats, rankingScore: calculateRankingScore(stats) }))
+    .sort((a, b) => b.rankingScore - a.rankingScore)
+    .slice(0, 3)
+    .map((s) => s.stats)
 
   const totalMatches = allMatches.length
 

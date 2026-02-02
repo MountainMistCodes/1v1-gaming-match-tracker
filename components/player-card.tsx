@@ -10,7 +10,7 @@ interface PlayerCardProps {
 }
 
 export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
-  const { player, totalWins, totalLosses, winPercentage, tournamentWins, rating } = stats
+  const { player, totalWins, totalLosses, netWinRate, tournamentWins } = stats
 
   return (
     <Link
@@ -18,7 +18,7 @@ export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
       className="block rounded-2xl bg-card border border-border p-4 transition-all duration-200 hover:border-muted-foreground/30 active:scale-[0.98]"
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 flex-1">
+        <div className="flex items-center gap-3">
           {showRank && rank && (
             <div
               className={cn(
@@ -45,7 +45,7 @@ export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
             )}
           </div>
 
-          <div className="flex-1">
+          <div>
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-foreground">{player.name}</h3>
               {tournamentWins > 0 && (
@@ -55,24 +55,17 @@ export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-3 mt-1">
               <span className="text-sm">
                 <span className="text-success font-medium">{totalWins}</span>
                 <span className="text-muted-foreground"> - </span>
                 <span className="text-destructive font-medium">{totalLosses}</span>
               </span>
-              <span className="text-xs text-muted-foreground">({winPercentage.toFixed(0)}%)</span>
+              <span className="text-xs text-muted-foreground">({netWinRate.toFixed(1)}%)</span>
             </div>
           </div>
         </div>
-
-        <div className="flex items-center gap-3">
-          <div className="px-3 py-2 rounded-lg bg-primary/10 border border-primary/20 flex flex-col items-end">
-            <div className="text-lg font-semibold text-primary">{Math.round(rating)}</div>
-            <div className="text-xs text-primary/70 font-medium">امتیاز</div>
-          </div>
-          <ChevronLeft className="h-5 w-5 text-muted-foreground" />
-        </div>
+        <ChevronLeft className="h-5 w-5 text-muted-foreground" />
       </div>
     </Link>
   )
