@@ -79,6 +79,22 @@ function calculateTournamentPoints(
 /**
  * Calculate all player ratings
  */
+function logDebugInfo(playerStatsArray: PlayerStats[]): void {
+  if (typeof window !== "undefined") {
+    console.log("[v0 Rating Debug]", {
+      totalPlayers: playerStatsArray.length,
+      topPlayer: playerStatsArray[0]
+        ? {
+            name: playerStatsArray[0].player.name,
+            rating: playerStatsArray[0].rating.toFixed(2),
+            wins: playerStatsArray[0].totalWins,
+            matches: playerStatsArray[0].totalMatches,
+          }
+        : null,
+    })
+  }
+}
+
 export function calculateAllPlayerRatings(
   players: Player[],
   matches: { player1_id: string; player2_id: string; winner_id: string }[],
@@ -186,6 +202,7 @@ export function calculateAllPlayerRatings(
     )
     .sort((a, b) => b.rating - a.rating)
 
+  logDebugInfo(playerStatsArray)
   return playerStatsArray
 }
 
