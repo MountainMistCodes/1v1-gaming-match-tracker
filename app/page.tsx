@@ -92,36 +92,33 @@ function calculateNetWinRate(
   
   if (playerMatches.length === 0) return 0
 
-  let netScore = 0
-  const playerRanks = new Map<string, number>()
-  
-  // First pass: calculate win counts to determine rough rank
+  // Calculate total wins for each player for strength ranking
+  const playerWinsMap = new Map<string, number>()
   for (const player of players) {
-    const playerWins = matches.filter((m) => m.winner_id === player.id).length
-    playerRanks.set(player.id, playerWins)
+    const wins = matches.filter((m) => m.winner_id === player.id).length
+    playerWinsMap.set(player.id, wins)
   }
 
-  // Calculate net win rate based on opponent strength
+  const playerTotalWins = playerWinsMap.get(playerId) || 0
+  
+  let weightedScore = 0
+  let totalWeight = 0
+
+  // Calculate weighted net win rate based on opponent strength
   for (const match of playerMatches) {
     const isWinner = match.winner_id === playerId
     const opponentId = match.player1_id === playerId ? match.player2_id : match.player1_id
+    const opponentWins = playerWinsMap.get(opponentId) || 0
     
-    const playerWins = playerRanks.get(playerId) || 0
-    const opponentWins = playerRanks.get(opponentId) || 0
+    // Weight: opponent with more wins = stronger = higher weight
+    const weight = 1 + (opponentWins / Math.max(playerTotalWins, 1)) * 0.5
     
-    // Stronger opponents (more wins) give more credit for wins
-    const strengthDifference = opponentWins - playerWins
-    const baseCredit = 1
-    const strengthBonus = strengthDifference > 0 ? Math.min(strengthDifference * 0.05, 0.5) : Math.max(strengthDifference * 0.1, -0.3)
-    
-    if (isWinner) {
-      netScore += baseCredit + strengthBonus
-    } else {
-      netScore -= baseCredit + (strengthBonus > 0 ? strengthBonus : 0) // Penalize losses more against weaker opponents
-    }
+    const score = isWinner ? weight : -weight
+    weightedScore += score
+    totalWeight += weight
   }
 
-  return (netScore / playerMatches.length) * 100
+  return (weightedScore / totalWeight) * 100
 }
 
 function calculateRankingScore(stats: PlayerStats): number {

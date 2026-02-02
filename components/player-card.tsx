@@ -1,6 +1,12 @@
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { Trophy, ChevronLeft, User } from "lucide-react"
+import { Trophy, ChevronLeft, User, Info } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import type { PlayerStats } from "@/lib/types"
 
 interface PlayerCardProps {
@@ -61,7 +67,21 @@ export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
                 <span className="text-muted-foreground"> - </span>
                 <span className="text-destructive font-medium">{totalLosses}</span>
               </span>
-              <span className="text-xs text-muted-foreground">({netWinRate.toFixed(1)}%)</span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-xs text-muted-foreground cursor-help flex items-center gap-1">
+                      ({netWinRate.toFixed(1)}%)
+                      <Info className="h-3 w-3" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    <p className="font-medium">میزان برتری</p>
+                    <p>برای حریفان قوی‌تر: +</p>
+                    <p>برای حریفان ضعیف‌تر: −</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
         </div>
