@@ -83,13 +83,14 @@ function calculateStats(
       const losses = playerMatches.length - wins
       const tournamentWins = placements.filter((p) => p.player_id === player.id && p.placement === 1).length
       const tournamentParticipations = placements.filter((p) => p.player_id === player.id).length
+      const totalMatches = playerMatches.length
 
       const stats: PlayerStats = {
         player,
         totalWins: wins,
         totalLosses: losses,
         totalMatches: playerMatches.length,
-        winPercentage: playerMatches.length > 0 ? (wins / playerMatches.length) * 100 : 0,
+        winPercentage: totalMatches > 0 ? ((wins - losses) / totalMatches) * 100 : 0,
         tournamentWins,
         tournamentParticipations,
       }
