@@ -45,31 +45,43 @@ async function getLeaderboardData() {
     placements: placements,
   }
 }
-
+function getTournamentWinEquivalent(placement: number): number {
+  if (placement === 1) return 5
+  if (placement === 2) return 3
+  return 0
+}
 const MIN_GAMES_FOR_RANKING = 10 // Minimum games to be ranked fairly
 
 function calculateRankingScore(stats: PlayerStats): number {
-  const { totalMatches, winPercentage, tournamentWins } = stats
+  const {
+    totalMatches,
+    winPercentage,
+    tournamentWins,
+    tournamentParticipations,
+  } = stats
 
-  // Base score from win percentage (0-100)
   let score = winPercentage
 
-  // Apply confidence factor based on games played
-  // Players with fewer games get their score reduced
-  // This prevents someone with 1 win / 1 game (100%) from ranking above
-  // someone with 80 wins / 100 games (80%)
+  // Confidence factor for low sample size
   if (totalMatches < MIN_GAMES_FOR_RANKING) {
-    // Gradually increase confidence as games approach minimum
     const confidenceFactor = totalMatches / MIN_GAMES_FOR_RANKING
-    // Blend towards 50% (average) for low game counts
     score = 50 + (score - 50) * confidenceFactor
   }
 
-  // Tournament bonus: each tournament win adds 2 points
-  score += tournamentWins * 2
+  // Tournament impact
+  // 1st = 5x win, but bounded by participation count
+  const tournamentEquivalentWins = placements
+  .filter((p) => p.player_id === stats.player.id)
+  .reduce(
+    (sum, p) => sum + getTournamentWinEquivalent(p.placement),
+    0,
+  )
+
+score += tournamentEquivalentWins * 2
 
   return score
 }
+
 
 function calculateStats(
   players: Player[],
@@ -78,19 +90,36 @@ function calculateStats(
 ): PlayerStats[] {
   const statsWithScore = players
     .map((player) => {
-      const playerMatches = matches.filter((m) => m.player1_id === player.id || m.player2_id === player.id)
-      const wins = matches.filter((m) => m.winner_id === player.id).length
+      const playerMatches = matches.filter(
+        (m) => m.player1_id === player.id || m.player2_id === player.id,
+      )
+
+      const wins = playerMatches.filter(
+        (m) => m.winner_id === player.id,
+      ).length
+
       const losses = playerMatches.length - wins
-      const tournamentWins = placements.filter((p) => p.player_id === player.id && p.placement === 1).length
-      const tournamentParticipations = placements.filter((p) => p.player_id === player.id).length
       const totalMatches = playerMatches.length
+
+      const playerPlacements = placements.filter(
+        (p) => p.player_id === player.id,
+      )
+
+      const tournamentWins = playerPlacements.filter(
+        (p) => p.placement === 1,
+      ).length
+
+      const tournamentParticipations = playerPlacements.length
+
+      const winPercentage =
+        totalMatches > 0 ? (wins / totalMatches) * 100 : 0
 
       const stats: PlayerStats = {
         player,
         totalWins: wins,
         totalLosses: losses,
-        totalMatches: playerMatches.length,
-        winPercentage: totalMatches > 0 ? ((wins - losses) / totalMatches) * 100 : 0,
+        totalMatches,
+        winPercentage,
         tournamentWins,
         tournamentParticipations,
       }
@@ -104,6 +133,7 @@ function calculateStats(
 
   return statsWithScore.map((s) => s.stats)
 }
+
 
 export default async function LeaderboardPage() {
   const { players, matches, placements } = await getLeaderboardData()
