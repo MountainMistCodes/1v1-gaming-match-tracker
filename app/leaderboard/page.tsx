@@ -53,85 +53,43 @@ function getTournamentWinEquivalent(placement: number): number {
 const MIN_GAMES_FOR_RANKING = 10 // Minimum games to be ranked fairly
 
 function calculateRankingScore(stats: PlayerStats): number {
-  const {
-    totalMatches,
-    winPercentage,
-    tournamentWins,
-    tournamentParticipations,
-  } = stats
+  const { totalMatches, winPercentage, tournamentWins } = stats
 
   let score = winPercentage
 
-  // Confidence factor for low sample size
   if (totalMatches < MIN_GAMES_FOR_RANKING) {
     const confidenceFactor = totalMatches / MIN_GAMES_FOR_RANKING
     score = 50 + (score - 50) * confidenceFactor
   }
 
-  // Tournament impact
-  // 1st = 5x win, but bounded by participation count
-  const tournamentEquivalentWins = placements
-  .filter((p) => p.player_id === stats.player.id)
-  .reduce(
-    (sum, p) => sum + getTournamentWinEquivalent(p.placement),
-    0,
-  )
-
-score += tournamentEquivalentWins * 2
+  score += tournamentWins * 2
 
   return score
 }
 
-
 function calculateStats(
   players: Player[],
-  matches: { player1_id: string; player2_id: string; winner_id: string }[],
+  matches: any[],
   placements: { player_id: string; placement: number }[],
 ): PlayerStats[] {
-  const statsWithScore = players
-    .map((player) => {
-      const playerMatches = matches.filter(
-        (m) => m.player1_id === player.id || m.player2_id === player.id,
-      )
+  return players.map((player) => {
+    const playerMatches = matches.filter((m) => m.player1_id === player.id || m.player2_id === player.id)
+    const wins = matches.filter((m) => m.winner_id === player.id).length
+    const losses = playerMatches.length - wins
+    const tournamentWins = placements.filter((p) => p.player_id === player.id && p.placement === 1).length
+    const tournamentParticipations = placements.filter((p) => p.player_id === player.id).length
+    const totalMatches = playerMatches.length
 
-      const wins = playerMatches.filter(
-        (m) => m.winner_id === player.id,
-      ).length
-
-      const losses = playerMatches.length - wins
-      const totalMatches = playerMatches.length
-
-      const playerPlacements = placements.filter(
-        (p) => p.player_id === player.id,
-      )
-
-      const tournamentWins = playerPlacements.filter(
-        (p) => p.placement === 1,
-      ).length
-
-      const tournamentParticipations = playerPlacements.length
-
-      const winPercentage =
-        totalMatches > 0 ? (wins / totalMatches) * 100 : 0
-
-      const stats: PlayerStats = {
-        player,
-        totalWins: wins,
-        totalLosses: losses,
-        totalMatches,
-        winPercentage,
-        tournamentWins,
-        tournamentParticipations,
-      }
-
-      return {
-        stats,
-        rankingScore: calculateRankingScore(stats),
-      }
-    })
-    .sort((a, b) => b.rankingScore - a.rankingScore)
-
-  return statsWithScore.map((s) => s.stats)
+    return {
+      player,
+      totalWins: wins,
+      totalLosses: losses,
+      totalMatches: playerMatches.length,
+      winPercentage: totalMatches > 0 ? ((wins - losses) / totalMatches) * 100 : 0,
+      tournamentWins,
+      tournamentParticipations,
+    }
+  })
 }
 
 
