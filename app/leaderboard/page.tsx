@@ -45,11 +45,7 @@ async function getLeaderboardData() {
     placements: placements,
   }
 }
-function getTournamentWinEquivalent(placement: number): number {
-  if (placement === 1) return 5
-  if (placement === 2) return 3
-  return 0
-}
+
 const MIN_GAMES_FOR_RANKING = 10 // Minimum games to be ranked fairly
 
 function calculateRankingScore(stats: PlayerStats): number {
