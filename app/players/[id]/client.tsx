@@ -11,9 +11,6 @@ import {
   ChevronRight,
   Trophy,
   Swords,
-  Target,
-  TrendingUp,
-  TrendingDown,
   Medal,
   Award,
   User,
@@ -97,10 +94,10 @@ export function PlayerProfileClient({
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
-          <StatsCard title="برد" value={totalWins} icon={TrendingUp} variant="success" />
-          <StatsCard title="باخت" value={totalLosses} icon={TrendingDown} variant="default" />
-          <StatsCard title="کل مسابقات" value={matches.length} icon={Swords} variant="primary" />
-          <StatsCard title="درصد برد" value={`${winPercentage.toFixed(0)}%`} icon={Target} variant="accent" />
+          <StatsCard title="برد" value={totalWins} iconName="trending-up" variant="success" />
+          <StatsCard title="باخت" value={totalLosses} iconName="trending-down" variant="default" />
+          <StatsCard title="کل مسابقات" value={matches.length} iconName="swords" variant="primary" />
+          <StatsCard title="درصد برد" value={`${winPercentage.toFixed(0)}%`} iconName="target" variant="accent" />
         </div>
       </div>
 

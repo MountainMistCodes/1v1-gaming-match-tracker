@@ -1,14 +1,14 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Users, Swords, Trophy } from "lucide-react"
+import { Users, Swords, Trophy, TrendingUp, TrendingDown, Target } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import * as React from "react"
 
 interface StatsCardProps {
   title: string
   value: string | number
-  iconName: "users" | "swords" | "trophy"
+  iconName: "users" | "swords" | "trophy" | "trending-up" | "trending-down" | "target"
   className?: string
   variant?: "default" | "primary" | "accent" | "success"
 }
@@ -17,6 +17,9 @@ const icons = {
   users: Users,
   swords: Swords,
   trophy: Trophy,
+  "trending-up": TrendingUp,
+  "trending-down": TrendingDown,
+  target: Target,
 }
 
 export function StatsCard({ title, value, iconName, className, variant = "default" }: StatsCardProps) {
