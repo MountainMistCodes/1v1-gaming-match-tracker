@@ -9,6 +9,9 @@ import Image from "next/image"
 import { rankPlayers } from "@/lib/ranking"
 import type { Player, Match, Tournament, Activity } from "@/lib/types"
 
+// Revalidate every 10 seconds
+export const revalidate = 10
+
 async function fetchAllRows(supabase: any, table: string, selectQuery = "*") {
   const allData: any[] = []
   const pageSize = 1000
@@ -80,6 +83,11 @@ async function getDashboardData() {
     placements: allPlacements,
     activities: (activities || []) as Activity[],
   }
+}
+
+export const metadata = {
+  title: "بلک لیست - صفحه‌ی اصلی",
+  description: "ثبت نتایج مسابقات گیمینگ و رتبه‌بندی بازیکنان",
 }
 
 export default async function HomePage() {
