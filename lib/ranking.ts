@@ -118,15 +118,14 @@ export function rankPlayers(players: Player[], matches: MatchRow[], placements: 
     .map((stats) => ({ stats, rankingScore: calculateRankingScore(stats, matches, placements) }))
     .sort((a, b) => b.rankingScore - a.rankingScore)
 
-  if (process.env.NEXT_PUBLIC_DEVELOPMENT === "DEVELOPMENT") {
-    console.table(
-      statsWithScore.map((entry, index) => ({
-        rank: index + 1,
-        player: entry.stats.player.name,
-        rankingScore: Number(entry.rankingScore.toFixed(3)),
-      })),
-    )
-  }
+  console.log("[v0] Player Rankings:")
+  console.table(
+    statsWithScore.map((entry, index) => ({
+      rank: index + 1,
+      player: entry.stats.player.name,
+      rankingScore: Number(entry.rankingScore.toFixed(3)),
+    })),
+  )
 
   return statsWithScore.map((s) => s.stats)
 }
