@@ -116,39 +116,9 @@ export function calculateRankingScore(
 export function rankPlayers(players: Player[], matches: MatchRow[], placements: PlacementRow[]): PlayerStats[] {
   const playerStats = calculatePlayerStats(players, matches, placements)
 
-  const statsWithScore = playerStats.map((stats) => {
-    const rankingScore = calculateRankingScore(stats, matches, placements)
-    
-    // Detailed calculation for "ماهان" and "محمد"
-    if (stats.player.name === "ماهان" || stats.player.name === "محمد") {
-      const bonusWins = calculateBonusWins(placements, stats.player.id)
-      const effectiveWins = stats.totalWins + bonusWins
-      const effectiveGames = stats.totalMatches + bonusWins
-      const adjustedWinPercentage = smoothedWinPercentage(effectiveWins, effectiveGames)
-      const opponentStrength = opponentStrengthPercentage(stats.player.id, matches)
-      
-      console.log(`[v0] === ${stats.player.name} Calculation ===`)
-      console.log(`[v0] Total Wins: ${stats.totalWins}, Total Matches: ${stats.totalMatches}`)
-      console.log(`[v0] Tournament Placements:`, placements.filter(p => p.player_id === stats.player.id))
-      console.log(`[v0] Bonus Wins from Tournaments: ${bonusWins}`)
-      console.log(`[v0] Effective Wins: ${effectiveWins}, Effective Games: ${effectiveGames}`)
-      console.log(`[v0] Adjusted Win Percentage: ${adjustedWinPercentage.toFixed(2)}%`)
-      console.log(`[v0] Opponent Strength: ${opponentStrength.toFixed(2)}%`)
-      console.log(`[v0] Final Score: (${adjustedWinPercentage.toFixed(2)} * 0.7) + (${opponentStrength.toFixed(2)} * 0.3) = ${rankingScore.toFixed(3)}`)
-      console.log("")
-    }
-    
-    return { stats, rankingScore }
-  }).sort((a, b) => b.rankingScore - a.rankingScore)
+  const statsWithScore = playerStats
+    .map((stats) => ({ stats, rankingScore: calculateRankingScore(stats, matches, placements) }))
+    .sort((a, b) => b.rankingScore - a.rankingScore)
 
-  console.log(
-    "[v0] Final Rankings:",
-    statsWithScore.map((entry, index) => ({
-      rank: index + 1,
-      player: entry.stats.player.name,
-      rankingScore: Number(entry.rankingScore.toFixed(3)),
-    })),
-  )
-
-  return statsWithScore.map((s) => s.stats)
+  return statsWithScore.map((s) => ({ ...s.stats, rankingScore: s.rankingScore }))
 }

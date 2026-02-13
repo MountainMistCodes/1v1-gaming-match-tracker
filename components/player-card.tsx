@@ -10,7 +10,7 @@ interface PlayerCardProps {
 }
 
 export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
-  const { player, totalWins, totalLosses, winPercentage, tournamentWins } = stats
+  const { player, totalWins, totalLosses, winPercentage, tournamentWins, rankingScore } = stats
 
   return (
     <Link
@@ -18,11 +18,11 @@ export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
       className="block rounded-2xl bg-card border border-border p-4 transition-all duration-200 hover:border-muted-foreground/30 active:scale-[0.98]"
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1">
           {showRank && rank && (
             <div
               className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
+                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0",
                 rank === 1 && "bg-gold/20 text-gold",
                 rank === 2 && "bg-silver/20 text-silver",
                 rank === 3 && "bg-bronze/20 text-bronze",
@@ -45,27 +45,32 @@ export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
             )}
           </div>
 
-          <div>
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-foreground">{player.name}</h3>
+              <h3 className="font-semibold text-foreground truncate">{player.name}</h3>
               {tournamentWins > 0 && (
-                <div className="flex items-center gap-1 text-gold">
+                <div className="flex items-center gap-1 text-gold flex-shrink-0">
                   <Trophy className="h-3.5 w-3.5" />
                   <span className="text-xs font-medium">{tournamentWins}</span>
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-3 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="text-sm">
                 <span className="text-success font-medium">{totalWins}</span>
                 <span className="text-muted-foreground"> - </span>
                 <span className="text-destructive font-medium">{totalLosses}</span>
               </span>
               <span className="text-xs text-muted-foreground">({winPercentage.toFixed(0)}%)</span>
+              {rankingScore !== undefined && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                  {rankingScore.toFixed(1)}
+                </span>
+              )}
             </div>
           </div>
         </div>
-        <ChevronLeft className="h-5 w-5 text-muted-foreground" />
+        <ChevronLeft className="h-5 w-5 text-muted-foreground flex-shrink-0" />
       </div>
     </Link>
   )
