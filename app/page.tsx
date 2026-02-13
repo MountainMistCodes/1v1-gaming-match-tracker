@@ -9,8 +9,10 @@ import Image from "next/image"
 import { rankPlayers } from "@/lib/ranking"
 import type { Player, Match, Tournament, Activity } from "@/lib/types"
 
-// Revalidate every 10 seconds
-export const revalidate = 10
+// Use stale-while-revalidate: cache for 5 minutes, revalidate in background
+// This means: show cached data immediately, revalidate only after 5 minutes
+// Real-time updates handled by ActivityFeed component with subscriptions
+export const revalidate = 300 // 5 minutes - only regenerate after this time
 
 async function fetchAllRows(supabase: any, table: string, selectQuery = "*") {
   const allData: any[] = []
