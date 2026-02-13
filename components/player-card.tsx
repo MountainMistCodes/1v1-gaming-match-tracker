@@ -78,7 +78,7 @@ export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="px-3 py-1.5 rounded-lg bg-muted border border-border text-xs font-medium text-muted-foreground">
-                    {rankingScore.toFixed(1)}
+                    {rankingScore.toFixed(2)}
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">
