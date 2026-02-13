@@ -1,6 +1,12 @@
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Trophy, ChevronLeft, User } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import type { PlayerStats } from "@/lib/types"
 
 interface PlayerCardProps {
@@ -17,7 +23,7 @@ export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
       href={`/players/${player.id}`}
       className="block rounded-2xl bg-card border border-border p-4 transition-all duration-200 hover:border-muted-foreground/30 active:scale-[0.98]"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 flex-1">
           {showRank && rank && (
             <div
@@ -55,22 +61,34 @@ export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <div className="flex items-center gap-2 mt-1">
               <span className="text-sm">
                 <span className="text-success font-medium">{totalWins}</span>
                 <span className="text-muted-foreground"> - </span>
                 <span className="text-destructive font-medium">{totalLosses}</span>
               </span>
               <span className="text-xs text-muted-foreground">({winPercentage.toFixed(0)}%)</span>
-              {rankingScore !== undefined && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-                  {rankingScore.toFixed(1)}
-                </span>
-              )}
             </div>
           </div>
         </div>
-        <ChevronLeft className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {rankingScore !== undefined && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="px-3 py-1.5 rounded-lg bg-muted border border-border text-xs font-medium text-muted-foreground cursor-help">
+                    {rankingScore.toFixed(1)}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  <p>Ranking Score</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          <ChevronLeft className="h-5 w-5 text-muted-foreground" />
+        </div>
       </div>
     </Link>
   )
