@@ -82,7 +82,7 @@ export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">
-                  <p>Ranking Score</p>
+                  <p> امتیاز محاسبه شده</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
