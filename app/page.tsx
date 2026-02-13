@@ -6,7 +6,13 @@ import { PlayerCard } from "@/components/player-card"
 import { ActivityFeed } from "@/components/activity-feed"
 import { Award } from "lucide-react"
 import Image from "next/image"
-import type { Player, Match, Tournament, PlayerStats, Activity } from "@/lib/types"
+import { rankPlayers } from "@/lib/ranking"
+import type { Player, Match, Tournament, Activity } from "@/lib/types"
+
+// Use stale-while-revalidate: cache for 5 minutes, revalidate in background
+// This means: show cached data immediately, revalidate only after 5 minutes
+// Real-time updates handled by ActivityFeed component with subscriptions
+export const revalidate = 300 // 5 minutes - only regenerate after this time
 
 async function fetchAllRows(supabase: any, table: string, selectQuery = "*") {
   const allData: any[] = []
@@ -81,56 +87,16 @@ async function getDashboardData() {
   }
 }
 
-const MIN_GAMES_FOR_RANKING = 10
-
-function calculateRankingScore(stats: PlayerStats): number {
-  const { totalMatches, winPercentage, tournamentWins } = stats
-
-  let score = winPercentage
-
-  if (totalMatches < MIN_GAMES_FOR_RANKING) {
-    const confidenceFactor = totalMatches / MIN_GAMES_FOR_RANKING
-    score = 50 + (score - 50) * confidenceFactor
-  }
-
-  score += tournamentWins * 2
-
-  return score
-}
-
-function calculatePlayerStats(
-  players: Player[],
-  matches: any[],
-  placements: { player_id: string; placement: number }[],
-): PlayerStats[] {
-  return players.map((player) => {
-    const playerMatches = matches.filter((m) => m.player1_id === player.id || m.player2_id === player.id)
-    const wins = matches.filter((m) => m.winner_id === player.id).length
-    const losses = playerMatches.length - wins
-    const tournamentWins = placements.filter((p) => p.player_id === player.id && p.placement === 1).length
-    const tournamentParticipations = placements.filter((p) => p.player_id === player.id).length
-
-    return {
-      player,
-      totalWins: wins,
-      totalLosses: losses,
-      totalMatches: playerMatches.length,
-      winPercentage: playerMatches.length > 0 ? (wins / playerMatches.length) * 100 : 0,
-      tournamentWins,
-      tournamentParticipations,
-    }
-  })
+export const metadata = {
+  title: "بلک لیست - صفحه‌ی اصلی",
+  description: "ثبت نتایج مسابقات گیمینگ و رتبه‌بندی بازیکنان",
 }
 
 export default async function HomePage() {
   const { players, matches, tournaments, allMatches, placements, activities } = await getDashboardData()
 
-  const playerStats = calculatePlayerStats(players, allMatches, placements)
-  const topPlayers = [...playerStats]
-    .map((stats) => ({ stats, rankingScore: calculateRankingScore(stats) }))
-    .sort((a, b) => b.rankingScore - a.rankingScore)
-    .slice(0, 3)
-    .map((s) => s.stats)
+  const rankings = rankPlayers(players, allMatches, placements)
+  const topPlayers = rankings.slice(0, 3)
 
   const totalMatches = allMatches.length
 
