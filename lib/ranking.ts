@@ -114,12 +114,22 @@ export function calculateRankingScore(
 }
 
 export function rankPlayers(players: Player[], matches: MatchRow[], placements: PlacementRow[]): PlayerStats[] {
-  const statsWithScore = calculatePlayerStats(players, matches, placements)
+  console.log("[v0] rankPlayers called with:", {
+    playersCount: players.length,
+    matchesCount: matches.length,
+    placementsCount: placements.length,
+  })
+
+  const playerStats = calculatePlayerStats(players, matches, placements)
+  console.log("[v0] Player stats calculated:", playerStats.length)
+
+  const statsWithScore = playerStats
     .map((stats) => ({ stats, rankingScore: calculateRankingScore(stats, matches, placements) }))
     .sort((a, b) => b.rankingScore - a.rankingScore)
 
-  console.log("[v0] Player Rankings:")
-  console.table(
+  console.log("[v0] Player Rankings Count:", statsWithScore.length)
+  console.log(
+    "[v0] Rankings Data:",
     statsWithScore.map((entry, index) => ({
       rank: index + 1,
       player: entry.stats.player.name,
