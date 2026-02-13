@@ -77,7 +77,7 @@ export function PlayerCard({ stats, rank, showRank = false }: PlayerCardProps) {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="px-3 py-1.5 rounded-lg bg-muted border border-border text-xs font-medium text-muted-foreground cursor-help">
+                  <div className="px-3 py-1.5 rounded-lg bg-muted border border-border text-xs font-medium text-muted-foreground">
                     {rankingScore.toFixed(1)}
                   </div>
                 </TooltipTrigger>
