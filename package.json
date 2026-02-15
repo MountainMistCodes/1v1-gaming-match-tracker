@@ -51,6 +51,7 @@
     "eslint": "^10.0.0",
     "framer-motion": "12.23.26",
     "input-otp": "1.4.1",
+    "jiti": "latest",
     "lucide-react": "^0.454.0",
     "next": "16.0.10",
     "next-pwa": "latest",

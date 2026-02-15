@@ -14,14 +14,6 @@ export async function GET(request: NextRequest) {
   // We should redirect back to the domain that initiated the request.
   const origin = requestUrl.origin
 
-  console.log("[v0] Auth callback received:", {
-    code: !!code,
-    tokenHash: !!tokenHash,
-    otpType,
-    origin,
-    fullUrl: request.url,
-  })
-
   if (code || (tokenHash && otpType)) {
     const cookieStore = await cookies()
     const supabase = createServerClient(
