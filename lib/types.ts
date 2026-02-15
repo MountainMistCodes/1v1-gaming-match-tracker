@@ -88,6 +88,8 @@ export interface Activity {
     old_rank?: number
     new_rank?: number
     player_name?: string
+    passed_player_ids?: string[]
+    passed_player_names?: string[]
     tournament_name?: string
     placements?: { position: number; player_name: string }[]
     milestone_count?: number

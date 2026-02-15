@@ -14,7 +14,12 @@ import { ImageUpload } from "@/components/image-upload"
 import { cn } from "@/lib/utils"
 import { Trophy, Plus, X, Loader2, Check, UserPlus, Medal, Award } from "lucide-react"
 import type { Player } from "@/lib/types"
-import { generateTournamentActivity, checkAndGenerateMilestoneActivity } from "@/lib/activity-generator"
+import {
+  generateTournamentActivity,
+  checkAndGenerateMilestoneActivity,
+  captureRankingSnapshot,
+  generateRankUpActivitiesFromSnapshot,
+} from "@/lib/activity-generator"
 import { uploadImageToSupabase } from "@/lib/image-utils"
 
 interface Placement {
@@ -73,6 +78,7 @@ export default function TournamentPage() {
 
     setIsSubmitting(true)
     const supabase = createClient()
+    const rankingSnapshot = await captureRankingSnapshot()
 
     let imageUrl: string | null = null
     if (imageBase64) {
@@ -114,6 +120,7 @@ export default function TournamentPage() {
 
       await generateTournamentActivity(tournament.id, name.trim(), placementsWithPlayers, imageUrl)
       await checkAndGenerateMilestoneActivity()
+      await generateRankUpActivitiesFromSnapshot(rankingSnapshot)
 
       setShowSuccess(true)
       setTimeout(() => {

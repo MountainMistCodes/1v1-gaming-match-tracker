@@ -18,6 +18,8 @@ import {
   checkAndGenerateStreakActivity,
   checkAndGenerateRivalryActivity,
   checkAndGenerateMilestoneActivity,
+  captureRankingSnapshot,
+  generateRankUpActivitiesFromSnapshot,
 } from "@/lib/activity-generator"
 import { uploadImageToSupabase } from "@/lib/image-utils"
 
@@ -54,6 +56,7 @@ export default function RecordMatchPage() {
 
     setIsSubmitting(true)
     const supabase = createClient()
+    const rankingSnapshot = await captureRankingSnapshot()
 
     let imageUrl: string | null = null
     if (imageBase64) {
@@ -108,6 +111,7 @@ export default function RecordMatchPage() {
       await checkAndGenerateStreakActivity(winnerId)
       await checkAndGenerateRivalryActivity(player1Id, player2Id)
       await checkAndGenerateMilestoneActivity()
+      await generateRankUpActivitiesFromSnapshot(rankingSnapshot)
 
       setShowSuccess(true)
       setTimeout(() => {
