@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client"
+import { rankPlayers } from "@/lib/ranking"
 import type { Activity, ActivityType, ActivityColor, Player } from "@/lib/types"
 
 interface CreateActivityParams {
@@ -11,6 +12,69 @@ interface CreateActivityParams {
   related_player_id?: string
   related_match_id?: string
   related_tournament_id?: string
+}
+
+type MatchRow = { player1_id: string; player2_id: string; winner_id: string }
+type PlacementRow = { player_id: string; placement: number }
+
+export interface RankingSnapshot {
+  rankByPlayerId: Map<string, number>
+  playersById: Map<string, Player>
+}
+
+async function fetchAllRows(supabase: any, table: string, selectQuery = "*") {
+  const allData: any[] = []
+  const pageSize = 1000
+  let from = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(selectQuery)
+      .range(from, from + pageSize - 1)
+
+    if (error || !data || data.length === 0) {
+      hasMore = false
+    } else {
+      allData.push(...data)
+      from += pageSize
+      if (data.length < pageSize) {
+        hasMore = false
+      }
+    }
+  }
+
+  return allData
+}
+
+function buildRankingSnapshot(players: Player[], matches: MatchRow[], placements: PlacementRow[]): RankingSnapshot {
+  const rankings = rankPlayers(players, matches, placements)
+  const rankByPlayerId = new Map<string, number>()
+  const playersById = new Map<string, Player>()
+
+  rankings.forEach((stats, index) => {
+    rankByPlayerId.set(stats.player.id, index + 1)
+    playersById.set(stats.player.id, stats.player)
+  })
+
+  return { rankByPlayerId, playersById }
+}
+
+export async function captureRankingSnapshot(): Promise<RankingSnapshot | null> {
+  try {
+    const supabase = createClient()
+    const [players, matches, placements] = await Promise.all([
+      fetchAllRows(supabase, "players"),
+      fetchAllRows(supabase, "matches", "player1_id, player2_id, winner_id"),
+      fetchAllRows(supabase, "tournament_placements", "player_id, placement"),
+    ])
+
+    return buildRankingSnapshot(players as Player[], matches as MatchRow[], placements as PlacementRow[])
+  } catch (error) {
+    console.error("Failed to capture ranking snapshot:", error)
+    return null
+  }
 }
 
 export async function createActivity(params: CreateActivityParams) {
@@ -112,12 +176,25 @@ export async function generateStreakActivity(player: Player, streakCount: number
 }
 
 // Generate rank change activity
-export async function generateRankChangeActivity(player: Player, oldRank: number, newRank: number) {
+export async function generateRankChangeActivity(
+  player: Player,
+  oldRank: number,
+  newRank: number,
+  passedPlayers: Player[] = [],
+) {
   const movedUp = newRank < oldRank
+  const passedPlayerNames = passedPlayers.map((p) => p.name).filter(Boolean)
+  const topPassedNames = passedPlayerNames.slice(0, 2).join(" و ")
+  const extraPassedCount = Math.max(0, passedPlayerNames.length - 2)
+
+  const title =
+    movedUp && passedPlayerNames.length > 0
+      ? `${player.name} به رتبه ${newRank} صعود کرد و از ${topPassedNames}${extraPassedCount > 0 ? ` و ${extraPassedCount} نفر دیگر` : ""} عبور کرد!`
+      : `${player.name} رتبه ${newRank} شد!`
 
   await createActivity({
     type: "rank_change",
-    title: `${player.name} رتبه ${newRank} شد!`,
+    title,
     description: movedUp ? `صعود از رتبه ${oldRank}` : `نزول از رتبه ${oldRank}`,
     icon: movedUp ? "📈" : "📉",
     color: movedUp ? "green" : "red",
@@ -125,9 +202,56 @@ export async function generateRankChangeActivity(player: Player, oldRank: number
       player_name: player.name,
       old_rank: oldRank,
       new_rank: newRank,
+      passed_player_ids: passedPlayers.length > 0 ? passedPlayers.map((p) => p.id) : undefined,
+      passed_player_names: passedPlayerNames.length > 0 ? passedPlayerNames : undefined,
     },
     related_player_id: player.id,
   })
+}
+
+export async function generateRankUpActivitiesFromSnapshot(previousSnapshot: RankingSnapshot | null) {
+  if (!previousSnapshot) return
+
+  const currentSnapshot = await captureRankingSnapshot()
+  if (!currentSnapshot) return
+
+  for (const [playerId, newRank] of currentSnapshot.rankByPlayerId.entries()) {
+    const oldRank = previousSnapshot.rankByPlayerId.get(playerId)
+    if (oldRank === undefined || newRank >= oldRank) {
+      continue
+    }
+
+    const passedPlayers: Player[] = []
+
+    for (const [otherPlayerId, otherOldRank] of previousSnapshot.rankByPlayerId.entries()) {
+      if (otherPlayerId === playerId) continue
+
+      const otherNewRank = currentSnapshot.rankByPlayerId.get(otherPlayerId)
+      if (otherNewRank === undefined) continue
+
+      const wasAheadBefore = otherOldRank < oldRank
+      const isBehindNow = otherNewRank > newRank
+
+      if (wasAheadBefore && isBehindNow) {
+        const passedPlayer =
+          currentSnapshot.playersById.get(otherPlayerId) || previousSnapshot.playersById.get(otherPlayerId)
+        if (passedPlayer) {
+          passedPlayers.push(passedPlayer)
+        }
+      }
+    }
+
+    if (passedPlayers.length === 0) {
+      continue
+    }
+
+    const player = currentSnapshot.playersById.get(playerId) || previousSnapshot.playersById.get(playerId)
+    if (!player) {
+      continue
+    }
+
+    await generateRankChangeActivity(player, oldRank, newRank, passedPlayers)
+  }
 }
 
 // Generate rivalry update activity
