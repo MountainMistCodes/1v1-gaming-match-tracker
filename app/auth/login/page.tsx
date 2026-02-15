@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 import { AlertCircle, CheckCircle, Mail, RefreshCw } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 
 const TRUSTED_EMAILS = [
   "mahdi.loravand2002@gmail.com",
@@ -28,14 +28,14 @@ export default function LoginPage() {
   const [isPolling, setIsPolling] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
-    const callbackError = searchParams.get("error")
+    if (typeof window === "undefined") return
+    const callbackError = new URLSearchParams(window.location.search).get("error")
     if (callbackError) {
       setError(callbackError)
     }
-  }, [searchParams])
+  }, [])
 
   useEffect(() => {
     const supabase = createClient()
