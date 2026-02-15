@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 import { AlertCircle, CheckCircle, Mail, RefreshCw } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 const TRUSTED_EMAILS = [
   "mahdi.loravand2002@gmail.com",
@@ -28,6 +28,14 @@ export default function LoginPage() {
   const [isPolling, setIsPolling] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const callbackError = searchParams.get("error")
+    if (callbackError) {
+      setError(callbackError)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     const supabase = createClient()
@@ -46,42 +54,43 @@ export default function LoginPage() {
       }
     })
 
-    if (!isSent || !isPolling) return
+    let pollInterval: NodeJS.Timeout | undefined
+    let timeout: NodeJS.Timeout | undefined
 
-    let pollInterval: NodeJS.Timeout
+    if (isSent && isPolling) {
+      const checkAuthStatus = async () => {
+        console.log("[v0] Polling for session status...")
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
 
-    const checkAuthStatus = async () => {
-      console.log("[v0] Polling for session status...")
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
-      if (session) {
-        console.log("[v0] Session detected from another device!")
-        toast({
-          title: "ورود موفق",
-          description: "با موفقیت وارد شدید.",
-        })
-        setIsPolling(false)
-        router.push("/")
+        if (session) {
+          console.log("[v0] Session detected from another device!")
+          toast({
+            title: "ورود موفق",
+            description: "با موفقیت وارد شدید.",
+          })
+          setIsPolling(false)
+          router.push("/")
+        }
       }
+
+      // Poll every 2 seconds
+      pollInterval = setInterval(checkAuthStatus, 2000)
+
+      // Stop polling after 5 minutes
+      timeout = setTimeout(
+        () => {
+          setIsPolling(false)
+          if (pollInterval) clearInterval(pollInterval)
+        },
+        5 * 60 * 1000,
+      )
     }
 
-    // Poll every 2 seconds
-    pollInterval = setInterval(checkAuthStatus, 2000)
-
-    // Stop polling after 5 minutes
-    const timeout = setTimeout(
-      () => {
-        setIsPolling(false)
-        clearInterval(pollInterval)
-      },
-      5 * 60 * 1000,
-    )
-
     return () => {
-      clearInterval(pollInterval)
-      clearTimeout(timeout)
+      if (pollInterval) clearInterval(pollInterval)
+      if (timeout) clearTimeout(timeout)
       subscription.unsubscribe()
     }
   }, [isSent, isPolling, router, toast])
