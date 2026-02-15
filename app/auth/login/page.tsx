@@ -3,15 +3,19 @@
 import type React from "react"
 
 import { useState } from "react"
+import Image from "next/image"
+import { AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
-import Image from "next/image"
-import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
+
+type LoginResponse = {
+  ok?: boolean
+  error?: string
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -19,12 +23,21 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [website, setWebsite] = useState("")
   const { toast } = useToast()
-  const router = useRouter()
+
+  const getErrorMessage = (status: number, fallback?: string) => {
+    if (status === 401) return "Invalid email or access denied."
+    if (status === 429) return "Too many attempts. Please try again later."
+    if (status >= 500) return "Server error. Please try again."
+    return fallback || "Login failed. Please try again."
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -33,27 +46,35 @@ export default function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, website }),
+        signal: controller.signal,
       })
 
-      const result = (await response.json()) as { error?: string; ok?: boolean }
-      if (!response.ok || !result.ok) {
-        throw new Error(result.error || "ورود انجام نشد")
+      let result: LoginResponse = {}
+      try {
+        result = (await response.json()) as LoginResponse
+      } catch {
+        result = {}
       }
 
-      toast({
-        title: "ورود موفق",
-        description: "با موفقیت وارد شدید.",
-      })
-      router.push("/")
-      router.refresh()
-    } catch (error: any) {
-      setError(error.message || "خطایی در ورود رخ داد")
+      if (!response.ok || !result.ok) {
+        throw new Error(getErrorMessage(response.status, result.error))
+      }
+
+      window.location.replace("/")
+    } catch (err: any) {
+      const message =
+        err?.name === "AbortError"
+          ? "Request timed out. Please try again."
+          : err?.message || "An unexpected error occurred."
+
+      setError(message)
       toast({
         variant: "destructive",
-        title: "خطا",
-        description: error.message || "خطایی در ورود رخ داد",
+        title: "Login failed",
+        description: message,
       })
     } finally {
+      clearTimeout(timeout)
       setIsLoading(false)
     }
   }
@@ -68,8 +89,8 @@ export default function LoginPage() {
               <div className="flex justify-center mb-6">
                 <Image src="/logo.png" alt="Black List Logo" width={80} height={80} className="rounded-2xl shadow-lg" />
               </div>
-              <CardTitle className="text-2xl font-bold tracking-tight">ورود به بلک لیست</CardTitle>
-              <CardDescription>برای ورود، ایمیل مجاز خود را وارد کنید</CardDescription>
+              <CardTitle className="text-2xl font-bold tracking-tight">Login</CardTitle>
+              <CardDescription>Enter your allowed email to continue</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-6">
@@ -79,9 +100,10 @@ export default function LoginPage() {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
+
                 <div className="grid gap-2">
                   <Label htmlFor="email" className="text-sm font-medium pr-1">
-                    ایمیل
+                    Email
                   </Label>
                   <Input
                     id="email"
@@ -98,6 +120,7 @@ export default function LoginPage() {
                     disabled={isLoading}
                   />
                 </div>
+
                 <div className="hidden" aria-hidden>
                   <Label htmlFor="website">Website</Label>
                   <Input
@@ -109,19 +132,13 @@ export default function LoginPage() {
                     onChange={(e) => setWebsite(e.target.value)}
                   />
                 </div>
+
                 <Button
                   type="submit"
                   className="w-full h-11 rounded-xl font-bold text-base shadow-lg shadow-primary/20"
                   disabled={isLoading || !email.trim()}
                 >
-                  {isLoading ? (
-                    <span className="flex items-center gap-2">
-                      <span className="animate-spin">⏳</span>
-                      در حال بررسی...
-                    </span>
-                  ) : (
-                    "ورود"
-                  )}
+                  {isLoading ? "Checking..." : "Login"}
                 </Button>
               </form>
             </CardContent>
@@ -131,4 +148,3 @@ export default function LoginPage() {
     </div>
   )
 }
-
