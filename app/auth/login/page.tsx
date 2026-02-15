@@ -2,152 +2,79 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useState } from "react"
+import Image from "next/image"
+import { AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
-import Image from "next/image"
-import { AlertCircle, CheckCircle, Mail, RefreshCw } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 
-const TRUSTED_EMAILS = [
-  "mahdi.loravand2002@gmail.com",
-  "matinkiaee.sy81@gmail.com",
-  // ADD TRUSTED EMAILS HERE
-]
+type LoginResponse = {
+  ok?: boolean
+  error?: string
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [isSent, setIsSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isPolling, setIsPolling] = useState(false)
+  const [website, setWebsite] = useState("")
   const { toast } = useToast()
-  const router = useRouter()
 
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    const callbackError = new URLSearchParams(window.location.search).get("error")
-    if (callbackError) {
-      setError(callbackError)
-    }
-  }, [])
+  const getErrorMessage = (status: number, fallback?: string) => {
+    if (status === 401) return "Invalid email or access denied."
+    if (status === 429) return "Too many attempts. Please try again later."
+    if (status >= 500) return "Server error. Please try again."
+    return fallback || "Login failed. Please try again."
+  }
 
-  useEffect(() => {
-    const supabase = createClient()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && isPolling) {
-        console.log("[v0] Session detected via onAuthStateChange")
-        toast({
-          title: "ورود موفق",
-          description: "با موفقیت وارد شدید.",
-        })
-        setIsPolling(false)
-        router.push("/")
-      }
-    })
-
-    let pollInterval: NodeJS.Timeout | undefined
-    let timeout: NodeJS.Timeout | undefined
-
-    if (isSent && isPolling) {
-      const checkAuthStatus = async () => {
-        console.log("[v0] Polling for session status...")
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-
-        if (session) {
-          console.log("[v0] Session detected from another device!")
-          toast({
-            title: "ورود موفق",
-            description: "با موفقیت وارد شدید.",
-          })
-          setIsPolling(false)
-          router.push("/")
-        }
-      }
-
-      // Poll every 2 seconds
-      pollInterval = setInterval(checkAuthStatus, 2000)
-
-      // Stop polling after 5 minutes
-      timeout = setTimeout(
-        () => {
-          setIsPolling(false)
-          if (pollInterval) clearInterval(pollInterval)
-        },
-        5 * 60 * 1000,
-      )
-    }
-
-    return () => {
-      if (pollInterval) clearInterval(pollInterval)
-      if (timeout) clearTimeout(timeout)
-      subscription.unsubscribe()
-    }
-  }, [isSent, isPolling, router, toast])
-
-  const handleMagicLink = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true) // Move loading state to the start to prevent "stuck" feeling
+    setIsLoading(true)
     setError(null)
 
-    const normalizedEmail = email.toLowerCase().trim()
-
-    if (!TRUSTED_EMAILS.includes(normalizedEmail)) {
-      setTimeout(() => {
-        setIsLoading(false)
-        setError(
-          "ایمیل شما در لیست مجاز نیست. این وب‌سایت فقط برای کاربران مجاز قابل دسترسی است. لطفاً با توسعه‌دهندگان تماس بگیرید.",
-        )
-        toast({
-          variant: "destructive",
-          title: "دسترسی غیرمجاز",
-          description: "ایمیل شما در لیست مجاز نیست.",
-        })
-      }, 500) // Small delay for better UX
-      return
-    }
-
-    const supabase = createClient()
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
 
     try {
-      const origin = typeof window !== "undefined" ? window.location.origin : ""
-      const redirectTo = `${origin}/auth/callback`
-
-      console.log("[v0] Attempting magic link with redirect:", redirectTo)
-
-      const { error } = await supabase.auth.signInWithOtp({
-        email: normalizedEmail,
-        options: {
-          emailRedirectTo: redirectTo,
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({ email, website }),
+        signal: controller.signal,
       })
 
-      if (error) throw error
-      setIsSent(true)
-      setIsPolling(true)
-      toast({
-        title: "لینک ورود ارسال شد",
-        description: "لطفاً صندوق ورودی ایمیل خود را بررسی کنید.",
-      })
-    } catch (error: any) {
-      console.error("[v0] Magic link error:", error)
-      setError(error.message || "خطایی در ارسال لینک ورود رخ داد")
+      let result: LoginResponse = {}
+      try {
+        result = (await response.json()) as LoginResponse
+      } catch {
+        result = {}
+      }
+
+      if (!response.ok || !result.ok) {
+        throw new Error(getErrorMessage(response.status, result.error))
+      }
+
+      window.location.replace("/")
+    } catch (err: any) {
+      const message =
+        err?.name === "AbortError"
+          ? "Request timed out. Please try again."
+          : err?.message || "An unexpected error occurred."
+
+      setError(message)
       toast({
         variant: "destructive",
-        title: "خطا",
-        description: error.message || "خطایی در ارسال لینک ورود رخ داد",
+        title: "Login failed",
+        description: message,
       })
     } finally {
+      clearTimeout(timeout)
       setIsLoading(false)
     }
   }
@@ -162,95 +89,58 @@ export default function LoginPage() {
               <div className="flex justify-center mb-6">
                 <Image src="/logo.png" alt="Black List Logo" width={80} height={80} className="rounded-2xl shadow-lg" />
               </div>
-              <CardTitle className="text-2xl font-bold tracking-tight">ورود به بلک لیست</CardTitle>
-              <CardDescription>برای دریافت لینک ورود، ایمیل معتبر خود را وارد کنید</CardDescription>
+              <CardTitle className="text-2xl font-bold tracking-tight">Login</CardTitle>
+              <CardDescription>Enter your allowed email to continue</CardDescription>
             </CardHeader>
             <CardContent>
-              {isSent ? (
-                <div className="text-center py-4 space-y-4">
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="rounded-full bg-success/20 p-3">
-                      {isPolling ? (
-                        <RefreshCw className="w-8 h-8 text-success animate-spin" />
-                      ) : (
-                        <CheckCircle className="w-8 h-8 text-success" />
-                      )}
-                    </div>
-                  </div>
-                  <Alert className="bg-success/10 border-success/20 text-right">
-                    <Mail className="h-4 w-4 ml-2" />
-                    <AlertDescription className="text-success-foreground">
-                      لینک ورود به ایمیل <span className="font-bold">{email}</span> ارسال شد. لطفاً صندوق ورودی خود را
-                      بررسی کنید.
-                    </AlertDescription>
+              <form onSubmit={handleLogin} className="space-y-6">
+                {error && (
+                  <Alert variant="destructive" className="text-right">
+                    <AlertCircle className="h-4 w-4 ml-2" />
+                    <AlertDescription>{error}</AlertDescription>
                   </Alert>
-                  {isPolling && (
-                    <Alert className="bg-primary/10 border-primary/20 text-right">
-                      <RefreshCw className="h-4 w-4 ml-2 animate-spin" />
-                      <AlertDescription className="text-sm">
-                        در حال انتظار برای ورود... می‌توانید لینک را در دستگاه دیگری باز کنید و این صفحه به طور خودکار
-                        شما را وارد می‌کند.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    اگر ایمیل را دریافت نکردید، پوشه هرزنامه را بررسی کنید.
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIsSent(false)
-                      setEmail("")
-                      setIsPolling(false)
+                )}
+
+                <div className="grid gap-2">
+                  <Label htmlFor="email" className="text-sm font-medium pr-1">
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="name@example.com"
+                    required
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value)
+                      setError(null)
                     }}
-                    className="w-full rounded-xl"
-                  >
-                    تلاش مجدد با ایمیل دیگر
-                  </Button>
+                    className="text-left rounded-xl bg-background/50"
+                    dir="ltr"
+                    disabled={isLoading}
+                  />
                 </div>
-              ) : (
-                <form onSubmit={handleMagicLink} className="space-y-6">
-                  {error && (
-                    <Alert variant="destructive" className="text-right">
-                      <AlertCircle className="h-4 w-4 ml-2" />
-                      <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                  )}
-                  <div className="grid gap-2">
-                    <Label htmlFor="email" className="text-sm font-medium pr-1">
-                      ایمیل
-                    </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="name@example.com"
-                      required
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value)
-                        setError(null)
-                      }}
-                      className="text-left rounded-xl bg-background/50"
-                      dir="ltr"
-                      disabled={isLoading}
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full h-11 rounded-xl font-bold text-base shadow-lg shadow-primary/20"
-                    disabled={isLoading || !email.trim()}
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center gap-2">
-                        <span className="animate-spin">⏳</span>
-                        در حال ارسال...
-                      </span>
-                    ) : (
-                      "ارسال لینک ورود"
-                    )}
-                  </Button>
-                </form>
-              )}
+
+                <div className="hidden" aria-hidden>
+                  <Label htmlFor="website">Website</Label>
+                  <Input
+                    id="website"
+                    type="text"
+                    autoComplete="off"
+                    tabIndex={-1}
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-11 rounded-xl font-bold text-base shadow-lg shadow-primary/20"
+                  disabled={isLoading || !email.trim()}
+                >
+                  {isLoading ? "Checking..." : "Login"}
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </div>
