@@ -37,3 +37,7 @@ next-env.d.ts
 
 # pnpm
 pnpm-lock.yaml
+
+# next-pwa generated files
+public/sw.js
+public/workbox-*.js
