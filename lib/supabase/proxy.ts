@@ -2,13 +2,15 @@ import { NextResponse, type NextRequest } from "next/server"
 import { AUTH_COOKIE_NAME, isTrustedEmail } from "@/lib/auth/config"
 
 export async function updateSession(request: NextRequest) {
-  const isAuthPage = request.nextUrl.pathname.startsWith("/auth")
-  const isLoginApi = request.nextUrl.pathname === "/api/auth/login"
-  const isPublicAsset = /\.(png|jpg|jpeg|gif|svg|ico|webp)$/.test(request.nextUrl.pathname)
+  const pathname = request.nextUrl.pathname
+  const isAuthPage = pathname.startsWith("/auth")
+  const isLoginApi = pathname === "/api/auth/login"
+  const isPwaRuntime = pathname === "/sw.js" || pathname === "/manifest.webmanifest" || pathname.startsWith("/workbox-")
+  const isPublicAsset = /\.(png|jpg|jpeg|gif|svg|ico|webp)$/.test(pathname)
   const authEmail = request.cookies.get(AUTH_COOKIE_NAME)?.value ?? ""
   const isAuthenticated = isTrustedEmail(authEmail)
 
-  if (isLoginApi) {
+  if (isLoginApi || isPwaRuntime) {
     return NextResponse.next()
   }
 
