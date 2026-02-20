@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import { AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -18,11 +18,18 @@ type LoginResponse = {
 }
 
 export default function LoginPage() {
+  const isAuthDisabled = process.env.NEXT_PUBLIC_DEVELOPMENT === "DEVELOPMENT"
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [website, setWebsite] = useState("")
   const { toast } = useToast()
+
+  useEffect(() => {
+    if (isAuthDisabled) {
+      window.location.replace("/")
+    }
+  }, [isAuthDisabled])
 
   const getErrorMessage = (status: number, fallback?: string) => {
     if (status === 401) return "Invalid email or access denied."

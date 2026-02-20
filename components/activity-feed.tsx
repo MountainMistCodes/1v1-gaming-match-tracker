@@ -64,11 +64,9 @@ export function ActivityFeed({
     [limit, lastSeenId],
   )
 
-  // Load initial activities and setup
+  // Always refresh on mount to avoid stale server-cached initial data.
   useEffect(() => {
-    if (initialActivities.length === 0) {
-      loadActivities()
-    }
+    loadActivities()
 
     // Load last seen activity from localStorage
     if (typeof window !== "undefined") {
@@ -77,7 +75,7 @@ export function ActivityFeed({
         setLastSeenId(stored)
       }
     }
-  }, [initialActivities.length, loadActivities])
+  }, [loadActivities])
 
   useEffect(() => {
     const supabase = createClient()
@@ -102,8 +100,13 @@ export function ActivityFeed({
       .subscribe((status) => {
         setIsRealtimeConnected(status === "SUBSCRIBED")
 
+        if (status === "SUBSCRIBED" && pollInterval) {
+          clearInterval(pollInterval)
+          pollInterval = null
+        }
+
         // If Realtime fails, use polling as fallback
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
           if (!pollInterval) {
             pollInterval = setInterval(async () => {
               const { data } = await supabase
