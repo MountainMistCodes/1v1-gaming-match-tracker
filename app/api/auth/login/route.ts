@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { AUTH_COOKIE_NAME, isTrustedEmail, normalizeEmail } from "@/lib/auth/config"
+import { AUTH_COOKIE_NAME, IS_AUTH_DISABLED, isTrustedEmail, normalizeEmail } from "@/lib/auth/config"
 
 type AttemptBucket = {
   attempts: number[]
@@ -53,6 +53,10 @@ function registerAttempt(key: string, now: number) {
 
 export async function POST(request: NextRequest) {
   try {
+    if (IS_AUTH_DISABLED) {
+      return NextResponse.json({ ok: true })
+    }
+
     const body = (await request.json()) as { email?: string; website?: string }
     const email = normalizeEmail(body.email ?? "")
     const honeypot = (body.website ?? "").trim()

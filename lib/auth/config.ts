@@ -1,4 +1,5 @@
 export const AUTH_COOKIE_NAME = "app_auth"
+export const IS_AUTH_DISABLED = process.env.NEXT_PUBLIC_DEVELOPMENT === "DEVELOPMENT"
 
 const TRUSTED_EMAILS = [
   "mahdi.loravand2002@gmail.com",

@@ -1,7 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { AUTH_COOKIE_NAME, isTrustedEmail } from "@/lib/auth/config"
+import { AUTH_COOKIE_NAME, IS_AUTH_DISABLED, isTrustedEmail } from "@/lib/auth/config"
 
 export async function updateSession(request: NextRequest) {
+  if (IS_AUTH_DISABLED) {
+    return NextResponse.next()
+  }
+
   const pathname = request.nextUrl.pathname
   const isAuthPage = pathname.startsWith("/auth")
   const isLoginApi = pathname === "/api/auth/login"
