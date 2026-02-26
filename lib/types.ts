@@ -85,6 +85,8 @@ export interface Activity {
     player2_name?: string
     player1_wins?: number
     player2_wins?: number
+    note?: string
+    match_count?: number
     old_rank?: number
     new_rank?: number
     player_name?: string

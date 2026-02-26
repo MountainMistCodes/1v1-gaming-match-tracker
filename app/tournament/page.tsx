@@ -21,6 +21,7 @@ import {
   generateRankUpActivitiesFromSnapshot,
 } from "@/lib/activity-generator"
 import { uploadImageToSupabase } from "@/lib/image-utils"
+import { revalidateLeaderboardCache } from "@/lib/revalidate-leaderboard"
 
 interface Placement {
   position: number
@@ -51,7 +52,7 @@ export default function TournamentPage() {
 
   async function loadPlayers() {
     const supabase = createClient()
-    const { data } = await supabase.from("players").select("*").order("name")
+    const { data } = await supabase.from("players").select("id,name,avatar_url,created_at").order("name")
     setPlayers((data || []) as Player[])
     setIsLoading(false)
   }
@@ -121,6 +122,7 @@ export default function TournamentPage() {
       await generateTournamentActivity(tournament.id, name.trim(), placementsWithPlayers, imageUrl)
       await checkAndGenerateMilestoneActivity()
       await generateRankUpActivitiesFromSnapshot(rankingSnapshot)
+      await revalidateLeaderboardCache()
 
       setShowSuccess(true)
       setTimeout(() => {

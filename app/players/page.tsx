@@ -13,32 +13,9 @@ import type { Player, PlayerStats } from "@/lib/types"
 import { generateNewPlayerActivity } from "@/lib/activity-generator"
 import { AvatarUpload } from "@/components/avatar-upload"
 import { uploadImageToSupabase } from "@/lib/image-utils"
-
-async function fetchAllRows(supabase: any, table: string, selectQuery = "*") {
-  const allData: any[] = []
-  const pageSize = 1000
-  let from = 0
-  let hasMore = true
-
-  while (hasMore) {
-    const { data, error } = await supabase
-      .from(table)
-      .select(selectQuery)
-      .range(from, from + pageSize - 1)
-
-    if (error || !data || data.length === 0) {
-      hasMore = false
-    } else {
-      allData.push(...data)
-      from += pageSize
-      if (data.length < pageSize) {
-        hasMore = false
-      }
-    }
-  }
-
-  return allData
-}
+import { fetchAllRows } from "@/lib/supabase/fetch-all-rows"
+import { calculatePlayerStats, type RankingMatchRow, type RankingPlacementRow } from "@/lib/ranking"
+import { revalidateLeaderboardCache } from "@/lib/revalidate-leaderboard"
 
 export default function PlayersPage() {
   const [players, setPlayers] = useState<Player[]>([])
@@ -57,30 +34,17 @@ export default function PlayersPage() {
     const supabase = createClient()
 
     const [playersRes, matches, placements] = await Promise.all([
-      supabase.from("players").select("*").order("name"),
-      fetchAllRows(supabase, "matches"),
-      fetchAllRows(supabase, "tournament_placements"),
+      supabase.from("players").select("id,name,avatar_url,created_at").order("name"),
+      fetchAllRows<RankingMatchRow>((from, to) =>
+        supabase.from("matches").select("player1_id,player2_id,winner_id").range(from, to),
+      ),
+      fetchAllRows<RankingPlacementRow>((from, to) =>
+        supabase.from("tournament_placements").select("player_id,placement").range(from, to),
+      ),
     ])
 
     const players = (playersRes.data || []) as Player[]
-
-    const stats = players.map((player) => {
-      const playerMatches = matches.filter((m: any) => m.player1_id === player.id || m.player2_id === player.id)
-      const wins = matches.filter((m: any) => m.winner_id === player.id).length
-      const losses = playerMatches.length - wins
-      const tournamentWins = placements.filter((p: any) => p.player_id === player.id && p.placement === 1).length
-      const tournamentParticipations = placements.filter((p: any) => p.player_id === player.id).length
-
-      return {
-        player,
-        totalWins: wins,
-        totalLosses: losses,
-        totalMatches: playerMatches.length,
-        winPercentage: playerMatches.length > 0 ? (wins / playerMatches.length) * 100 : 0,
-        tournamentWins,
-        tournamentParticipations,
-      }
-    })
+    const stats = calculatePlayerStats(players, matches, placements) as PlayerStats[]
 
     setPlayers(players)
     setPlayerStats(stats)
@@ -114,6 +78,7 @@ export default function PlayersPage() {
 
     if (!error && newPlayer) {
       await generateNewPlayerActivity(newPlayer as Player)
+      await revalidateLeaderboardCache()
 
       setNewPlayerName("")
       setNewPlayerAvatar(null)

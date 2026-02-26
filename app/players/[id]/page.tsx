@@ -1,89 +1,55 @@
-import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
-import type { Player, Match, TournamentPlacement, HeadToHead } from "@/lib/types"
 import { PlayerProfileClient } from "./client"
+import { fetchAllRows } from "@/lib/supabase/fetch-all-rows"
+import { createClient } from "@/lib/supabase/server"
+import type { HeadToHead, Match, Player, TournamentPlacement } from "@/lib/types"
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
-async function fetchAllRows(
-  supabase: any,
-  table: string,
-  selectQuery = "*",
-  filter?: { column: string; op: string; value: string },
-) {
-  const allData: any[] = []
-  const pageSize = 1000
-  let from = 0
-  let hasMore = true
-
-  while (hasMore) {
-    let query = supabase
-      .from(table)
-      .select(selectQuery)
-      .range(from, from + pageSize - 1)
-
-    if (filter) {
-      query = query.or(filter.value)
-    }
-
-    const { data, error } = await query
-
-    if (error || !data || data.length === 0) {
-      hasMore = false
-    } else {
-      allData.push(...data)
-      from += pageSize
-      if (data.length < pageSize) {
-        hasMore = false
-      }
-    }
-  }
-
-  return allData
-}
-
 async function getPlayerData(playerId: string) {
   const supabase = await createClient()
 
-  // Get player
-  const { data: player } = await supabase.from("players").select("*").eq("id", playerId).single()
+  const { data: player } = await supabase.from("players").select("id,name,avatar_url,created_at").eq("id", playerId).single()
+  if (!player) {
+    return null
+  }
 
-  if (!player) return null
-
-  const matches = await fetchAllRows(
-    supabase,
-    "matches",
-    `
-    *,
-    player1:players!matches_player1_id_fkey(*),
-    player2:players!matches_player2_id_fkey(*),
-    winner:players!matches_winner_id_fkey(*)
-  `,
-    { column: "player1_id", op: "eq", value: `player1_id.eq.${playerId},player2_id.eq.${playerId}` },
-  )
-
-  const sortedMatches = matches.sort((a, b) => new Date(b.played_at).getTime() - new Date(a.played_at).getTime())
-
-  // Get tournament placements
-  const { data: placements } = await supabase
-    .from("tournament_placements")
-    .select(`
-      *,
-      tournament:tournaments(*)
-    `)
-    .eq("player_id", playerId)
-    .order("created_at", { ascending: false })
-
-  // Get all players for head-to-head
-  const { data: allPlayers } = await supabase.from("players").select("*").neq("id", playerId)
+  const [matches, placementsRes, allPlayersRes] = await Promise.all([
+    fetchAllRows<any>((from, to) =>
+      supabase
+        .from("matches")
+        .select(
+          `
+          id,player1_id,player2_id,winner_id,notes,played_at,created_at,
+          player1:players!matches_player1_id_fkey(id,name,avatar_url,created_at),
+          player2:players!matches_player2_id_fkey(id,name,avatar_url,created_at),
+          winner:players!matches_winner_id_fkey(id,name,avatar_url,created_at)
+        `,
+        )
+        .or(`player1_id.eq.${playerId},player2_id.eq.${playerId}`)
+        .order("played_at", { ascending: false })
+        .range(from, to),
+    ),
+    supabase
+      .from("tournament_placements")
+      .select(
+        `
+        id,tournament_id,player_id,placement,created_at,
+        tournament:tournaments(id,name,game_type,tournament_date,created_at)
+      `,
+      )
+      .eq("player_id", playerId)
+      .order("created_at", { ascending: false }),
+    supabase.from("players").select("id,name,avatar_url,created_at").neq("id", playerId),
+  ])
 
   return {
     player: player as Player,
-    matches: sortedMatches as Match[],
-    placements: (placements || []) as TournamentPlacement[],
-    allPlayers: (allPlayers || []) as Player[],
+    matches: matches as Match[],
+    placements: (placementsRes.data || []) as unknown as TournamentPlacement[],
+    allPlayers: (allPlayersRes.data || []) as Player[],
   }
 }
 
@@ -98,9 +64,7 @@ function calculateHeadToHead(playerId: string, matches: Match[], allPlayers: Pla
     )
 
     if (vsMatches.length > 0) {
-      // Count wins where THIS player (playerId) won
       const wins = vsMatches.filter((m) => m.winner_id === playerId).length
-      // Losses is simply total matches minus wins
       const losses = vsMatches.length - wins
 
       headToHead.push({
@@ -125,12 +89,10 @@ export default async function PlayerProfilePage({ params }: PageProps) {
 
   const { player, matches, placements, allPlayers } = data
 
-  // Calculate stats
   const totalWins = matches.filter((m) => m.winner_id === player.id).length
   const totalLosses = matches.length - totalWins
   const winPercentage = matches.length > 0 ? (totalWins / matches.length) * 100 : 0
   const tournamentWins = placements.filter((p) => p.placement === 1).length
-
   const headToHead = calculateHeadToHead(player.id, matches, allPlayers)
 
   return (

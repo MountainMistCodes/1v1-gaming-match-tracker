@@ -47,7 +47,7 @@ export default function RootLayout({
         {children}
         <PWAInstallPrompt />
         <Analytics />
-        <Toaster position="top-center" />
+        <Toaster />
       </body>
     </html>
   )
