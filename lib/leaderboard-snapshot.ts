@@ -27,23 +27,39 @@ export type LeaderboardSnapshot = {
 export const getLeaderboardSnapshot = unstable_cache(
   async (): Promise<LeaderboardSnapshot> => {
     const supabase = await createClient()
+    const safeFetch = async <T>(label: string, loader: () => Promise<T[]>): Promise<T[]> => {
+      try {
+        return await loader()
+      } catch (error) {
+        console.error(`[leaderboard-snapshot] Failed to load ${label}`, error)
+        return []
+      }
+    }
 
     const [players, matches, placements, tournaments] = await Promise.all([
-      fetchAllRows<Player>((from, to) =>
-        supabase
-          .from("players")
-          .select("id,name,avatar_url,created_at")
-          .order("created_at", { ascending: false })
-          .range(from, to),
+      safeFetch("players", () =>
+        fetchAllRows<Player>((from, to) =>
+          supabase
+            .from("players")
+            .select("id,name,avatar_url,created_at")
+            .order("created_at", { ascending: false })
+            .range(from, to),
+        ),
       ),
-      fetchAllRows<LeaderboardMatchSnapshotRow>((from, to) =>
-        supabase.from("matches").select("player1_id,player2_id,winner_id,played_at").range(from, to),
+      safeFetch("matches", () =>
+        fetchAllRows<LeaderboardMatchSnapshotRow>((from, to) =>
+          supabase.from("matches").select("player1_id,player2_id,winner_id,played_at").range(from, to),
+        ),
       ),
-      fetchAllRows<LeaderboardPlacementSnapshotRow>((from, to) =>
-        supabase.from("tournament_placements").select("player_id,placement,tournament_id").range(from, to),
+      safeFetch("tournament_placements", () =>
+        fetchAllRows<LeaderboardPlacementSnapshotRow>((from, to) =>
+          supabase.from("tournament_placements").select("player_id,placement,tournament_id").range(from, to),
+        ),
       ),
-      fetchAllRows<LeaderboardTournamentSnapshotRow>((from, to) =>
-        supabase.from("tournaments").select("id,tournament_date").range(from, to),
+      safeFetch("tournaments", () =>
+        fetchAllRows<LeaderboardTournamentSnapshotRow>((from, to) =>
+          supabase.from("tournaments").select("id,tournament_date").range(from, to),
+        ),
       ),
     ])
 

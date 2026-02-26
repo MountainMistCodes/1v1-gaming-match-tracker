@@ -31,17 +31,25 @@ function isPWAInstalled(): boolean {
 
 const DISMISS_COUNT_KEY = "pwa-install-dismissed-count"
 const LAST_DISMISS_KEY = "pwa-install-dismissed-last"
+const NEXT_ALLOWED_KEY = "pwa-install-next-allowed-at"
+const SESSION_DISMISSED_KEY = "pwa-install-dismissed-session"
+
+const parseStoredNumber = (value: string | null): number => {
+  if (!value) return 0
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : 0
+}
 
 const getCooldownDays = (dismissCount: number): number => {
   switch (dismissCount) {
     case 1:
-      return 3
+      return 14
     case 2:
-      return 7
+      return 45
     case 3:
-      return 30
+      return 120
     default:
-      return 90
+      return 365
   }
 }
 
@@ -59,9 +67,19 @@ export function PWAInstallPrompt() {
       return // Already installed, don't show prompt
     }
 
-    // Check if dismissed recently
-    const dismissCount = Number.parseInt(localStorage.getItem(DISMISS_COUNT_KEY) || "0")
-    const lastDismissedTime = Number.parseInt(localStorage.getItem(LAST_DISMISS_KEY) || "0")
+    // Do not show repeatedly in the same tab session after a dismiss.
+    if (sessionStorage.getItem(SESSION_DISMISSED_KEY) === "true") {
+      return
+    }
+
+    // Check persisted cooldown.
+    const dismissCount = parseStoredNumber(localStorage.getItem(DISMISS_COUNT_KEY))
+    const lastDismissedTime = parseStoredNumber(localStorage.getItem(LAST_DISMISS_KEY))
+    const nextAllowedAt = parseStoredNumber(localStorage.getItem(NEXT_ALLOWED_KEY))
+
+    if (nextAllowedAt > Date.now()) {
+      return
+    }
 
     if (dismissCount > 0) {
       const cooldownDays = getCooldownDays(dismissCount)
@@ -94,6 +112,8 @@ export function PWAInstallPrompt() {
       // Clear dismissal flags on install
       localStorage.removeItem(DISMISS_COUNT_KEY)
       localStorage.removeItem(LAST_DISMISS_KEY)
+      localStorage.removeItem(NEXT_ALLOWED_KEY)
+      sessionStorage.removeItem(SESSION_DISMISSED_KEY)
       setShowPrompt(false)
       setDeferredPrompt(null)
       setIsInstalled(true)
@@ -118,6 +138,8 @@ export function PWAInstallPrompt() {
       localStorage.setItem("pwa-installed", "true")
       localStorage.removeItem(DISMISS_COUNT_KEY)
       localStorage.removeItem(LAST_DISMISS_KEY)
+      localStorage.removeItem(NEXT_ALLOWED_KEY)
+      sessionStorage.removeItem(SESSION_DISMISSED_KEY)
       setShowPrompt(false)
       setIsInstalled(true)
     }
@@ -126,10 +148,15 @@ export function PWAInstallPrompt() {
 
   const handleDismiss = () => {
     setShowPrompt(false)
-    const currentDismissCount = Number.parseInt(localStorage.getItem(DISMISS_COUNT_KEY) || "0")
+    const currentDismissCount = parseStoredNumber(localStorage.getItem(DISMISS_COUNT_KEY))
     const newDismissCount = currentDismissCount + 1
+    const dismissedAt = Date.now()
+    const nextAllowedAt = dismissedAt + getCooldownDays(newDismissCount) * 24 * 60 * 60 * 1000
+
+    sessionStorage.setItem(SESSION_DISMISSED_KEY, "true")
     localStorage.setItem(DISMISS_COUNT_KEY, newDismissCount.toString())
-    localStorage.setItem(LAST_DISMISS_KEY, Date.now().toString())
+    localStorage.setItem(LAST_DISMISS_KEY, dismissedAt.toString())
+    localStorage.setItem(NEXT_ALLOWED_KEY, nextAllowedAt.toString())
   }
 
   if (isInstalled || !showPrompt) return null

@@ -6,6 +6,7 @@ import { ActivityFeed } from "@/components/activity-feed"
 import { BottomNav } from "@/components/navigation"
 import { PlayerCard } from "@/components/player-card"
 import { StatsCard } from "@/components/stats-card"
+import { VersionHint } from "@/components/version-hint"
 import { calculatePlayerOfMonth } from "@/lib/player-of-month"
 import { rankPlayers } from "@/lib/ranking"
 import { getLeaderboardSnapshot } from "@/lib/leaderboard-snapshot"
@@ -13,13 +14,25 @@ import { createClient } from "@/lib/supabase/server"
 import type { Activity } from "@/lib/types"
 
 export const revalidate = 60
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "1.0.0"
 
 async function getDashboardData() {
   const supabase = await createClient()
+  const fetchActivities = async () => {
+    try {
+      return await supabase.from("activities").select("*").order("created_at", { ascending: false }).limit(10)
+    } catch (error) {
+      console.error("[home] Failed to load activities", error)
+      return { data: [] as Activity[] }
+    }
+  }
 
   const [snapshot, activitiesRes] = await Promise.all([
-    getLeaderboardSnapshot(),
-    supabase.from("activities").select("*").order("created_at", { ascending: false }).limit(10),
+    getLeaderboardSnapshot().catch((error) => {
+      console.error("[home] Failed to load leaderboard snapshot", error)
+      return { players: [], matches: [], placements: [], tournaments: [] }
+    }),
+    fetchActivities(),
   ])
 
   return {
@@ -44,7 +57,9 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="bg-gradient-to-b from-primary/20 to-background px-4 pb-6 pt-8">
-        <div className="mb-6 flex items-center gap-3">
+        <div className="mb-6">
+          <VersionHint version={APP_VERSION}>
+            <div className="flex items-center gap-3">
           <div className="overflow-hidden rounded-2xl">
             <Image src="/logo.png" alt="بلک لیست" width={56} height={56} className="h-14 w-14 object-contain" />
           </div>
@@ -52,6 +67,8 @@ export default async function HomePage() {
             <h1 className="text-2xl font-bold text-foreground">بلک لیست</h1>
             <p className="text-sm text-muted-foreground">ثبت نتایج مسابقات گیمینگ</p>
           </div>
+            </div>
+          </VersionHint>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
@@ -63,12 +80,12 @@ export default async function HomePage() {
 
       <div className="space-y-6 px-4 py-6">
         <section>
-          <h2 className="mb-3 text-lg font-semibold text-foreground">دسترسی سریع</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <ActionCard href="/match" title="ثبت مسابقه" description="ثبت نتیجه جدید" iconName="swords" variant="primary" />
-            <ActionCard href="/tournament" title="تورنمنت جدید" description="ثبت تورنمنت" iconName="trophy" variant="accent" />
-            <ActionCard href="/players" title="بازیکنان" description="مدیریت بازیکنان" iconName="users" />
-            <ActionCard href="/leaderboard" title="جدول امتیازات" description="رتبه‌بندی کلی" iconName="medal" />
+          <h2 className="mb-2 text-lg font-semibold text-foreground">دسترسی سریع</h2>
+          <div className="grid grid-cols-2 gap-2">
+            <ActionCard href="/match" title="ثبت مسابقه" iconName="swords" variant="primary" />
+            <ActionCard href="/tournament" title="تورنمنت جدید" iconName="trophy" variant="accent" />
+            <ActionCard href="/players" title="بازیکنان" iconName="users" />
+            <ActionCard href="/leaderboard" title="جدول امتیازات" iconName="medal" />
           </div>
         </section>
 
