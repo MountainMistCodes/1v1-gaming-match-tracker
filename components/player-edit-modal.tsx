@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { AvatarUpload } from "@/components/avatar-upload"
 import { X, Loader2, Check } from "lucide-react"
 import type { Player } from "@/lib/types"
+import { revalidateLeaderboardCache } from "@/lib/revalidate-leaderboard"
 
 interface PlayerEditModalProps {
   player: Player
@@ -17,7 +18,7 @@ interface PlayerEditModalProps {
 
 export function PlayerEditModal({ player, isOpen, onClose, onSave }: PlayerEditModalProps) {
   const [name, setName] = useState(player.name)
-  const [avatarUrl, setAvatarUrl] = useState(player.avatar_url || "")
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(player.avatar_url || null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -50,6 +51,7 @@ export function PlayerEditModal({ player, isOpen, onClose, onSave }: PlayerEditM
       return
     }
 
+    await revalidateLeaderboardCache()
     onSave(data as Player)
     onClose()
   }
@@ -71,7 +73,7 @@ export function PlayerEditModal({ player, isOpen, onClose, onSave }: PlayerEditM
 
         {/* Avatar Upload */}
         <div className="flex justify-center">
-          <AvatarUpload value={avatarUrl} onChange={setAvatarUrl} size={100} />
+          <AvatarUpload value={avatarUrl} onChange={setAvatarUrl} size="md" />
         </div>
 
         {/* Name Input */}

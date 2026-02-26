@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client"
 import { rankPlayers } from "@/lib/ranking"
+import { fetchAllRows } from "@/lib/supabase/fetch-all-rows"
 import type { Activity, ActivityType, ActivityColor, Player } from "@/lib/types"
 
 interface CreateActivityParams {
@@ -22,32 +23,6 @@ export interface RankingSnapshot {
   playersById: Map<string, Player>
 }
 
-async function fetchAllRows(supabase: any, table: string, selectQuery = "*") {
-  const allData: any[] = []
-  const pageSize = 1000
-  let from = 0
-  let hasMore = true
-
-  while (hasMore) {
-    const { data, error } = await supabase
-      .from(table)
-      .select(selectQuery)
-      .range(from, from + pageSize - 1)
-
-    if (error || !data || data.length === 0) {
-      hasMore = false
-    } else {
-      allData.push(...data)
-      from += pageSize
-      if (data.length < pageSize) {
-        hasMore = false
-      }
-    }
-  }
-
-  return allData
-}
-
 function buildRankingSnapshot(players: Player[], matches: MatchRow[], placements: PlacementRow[]): RankingSnapshot {
   const rankings = rankPlayers(players, matches, placements)
   const rankByPlayerId = new Map<string, number>()
@@ -65,9 +40,15 @@ export async function captureRankingSnapshot(): Promise<RankingSnapshot | null> 
   try {
     const supabase = createClient()
     const [players, matches, placements] = await Promise.all([
-      fetchAllRows(supabase, "players"),
-      fetchAllRows(supabase, "matches", "player1_id, player2_id, winner_id"),
-      fetchAllRows(supabase, "tournament_placements", "player_id, placement"),
+      fetchAllRows<Player>((from, to) =>
+        supabase.from("players").select("id,name,avatar_url,created_at").range(from, to),
+      ),
+      fetchAllRows<MatchRow>((from, to) =>
+        supabase.from("matches").select("player1_id,player2_id,winner_id").range(from, to),
+      ),
+      fetchAllRows<PlacementRow>((from, to) =>
+        supabase.from("tournament_placements").select("player_id,placement").range(from, to),
+      ),
     ])
 
     return buildRankingSnapshot(players as Player[], matches as MatchRow[], placements as PlacementRow[])

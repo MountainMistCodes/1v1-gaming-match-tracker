@@ -22,6 +22,7 @@ import {
   generateRankUpActivitiesFromSnapshot,
 } from "@/lib/activity-generator"
 import { uploadImageToSupabase } from "@/lib/image-utils"
+import { revalidateLeaderboardCache } from "@/lib/revalidate-leaderboard"
 
 export default function RecordMatchPage() {
   const router = useRouter()
@@ -34,7 +35,7 @@ export default function RecordMatchPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
-  const [matchCount, setMatchCount] = useState<number | "">(1)
+  const [matchCount, setMatchCount] = useState<number>(1)
 
   useEffect(() => {
     loadPlayers()
@@ -42,7 +43,7 @@ export default function RecordMatchPage() {
 
   async function loadPlayers() {
     const supabase = createClient()
-    const { data } = await supabase.from("players").select("*").order("name")
+    const { data } = await supabase.from("players").select("id,name,avatar_url,created_at").order("name")
     setPlayers((data || []) as Player[])
     setIsLoading(false)
   }
@@ -112,6 +113,7 @@ export default function RecordMatchPage() {
       await checkAndGenerateRivalryActivity(player1Id, player2Id)
       await checkAndGenerateMilestoneActivity()
       await generateRankUpActivitiesFromSnapshot(rankingSnapshot)
+      await revalidateLeaderboardCache()
 
       setShowSuccess(true)
       setTimeout(() => {
@@ -288,19 +290,9 @@ export default function RecordMatchPage() {
                   value={matchCount}
                   onFocus={(e) => e.target.select()}
                   onChange={(e) => {
-                    const val = e.target.value
-                    if (val === "") {
-                      setMatchCount("")
-                    } else {
-                      const num = Number.parseInt(val, 10)
-                      if (!isNaN(num) && num >= 1) {
-                        setMatchCount(num)
-                      }
-                    }
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value === "") {
-                      setMatchCount(1)
+                    const num = Number.parseInt(e.target.value, 10)
+                    if (!isNaN(num) && num >= 1) {
+                      setMatchCount(num)
                     }
                   }}
                   className="w-24 h-14 text-center text-2xl font-bold bg-secondary border-0 rounded-xl text-primary"
